@@ -11,143 +11,121 @@
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
         :root {
-            --bg:        #f5f5f5;
+            --bg:        #f2f3f5;
             --surface:   #ffffff;
-            --surface2:  #f0f0f0;
-            --border:    #d0d0d0;
-            --border2:   #e8e8e8;
+            --surface2:  #f0f1f3;
+            --surface3:  #e8eaed;
+            --border:    #d0d3d8;
+            --border2:   #e4e6ea;
             --text-pri:  #0a0a0a;
-            --text-sec:  #444444;
-            --text-mute: #888888;
+            --text-sec:  #444;
+            --text-mute: #888;
             --accent:    #0a0a0a;
             --accent-inv:#ffffff;
             --mark-bg:   #0a0a0a;
             --mark-text: #ffffff;
-            --canvas-bg: #111111;
-            --grid-col:  #2a2a2a;
-            --active-border: #0a0a0a;
-            --active-bg: #f0f0f0;
-            --tag-mill:  #0a0a0a;
-            --tag-grade: #444444;
+            --canvas-bg: #0c0e11;
+            --row-even:  #f8f9fa;
         }
 
-        html { font-size: 14px; }
+        html, body { height: 100%; }
 
         body {
             font-family: 'IBM Plex Sans Thai', sans-serif;
             background: var(--bg);
             color: var(--text-pri);
-            min-height: 100vh;
             -webkit-font-smoothing: antialiased;
+            overflow: hidden;
         }
 
         /* ─── NAVBAR ─── */
         nav {
             background: var(--accent);
             color: var(--accent-inv);
-            height: 56px;
+            height: 52px;
             display: flex;
             align-items: center;
             position: sticky;
             top: 0;
-            z-index: 100;
-            border-bottom: 1px solid #222;
+            z-index: 200;
+            border-bottom: 1px solid #1a1a1a;
+            flex-shrink: 0;
         }
         .nav-inner {
             width: 100%;
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 0 24px;
+            padding: 0 20px;
             display: flex;
             justify-content: space-between;
             align-items: center;
         }
-        .nav-logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
+        .nav-logo { display: flex; align-items: center; gap: 11px; }
         .nav-logo-icon {
-            width: 32px; height: 32px;
-            border: 1.5px solid rgba(255,255,255,0.3);
+            width: 30px; height: 30px;
+            border: 1.5px solid rgba(255,255,255,0.25);
             border-radius: 4px;
             display: flex; align-items: center; justify-content: center;
         }
         .nav-logo-title {
             font-family: 'Bebas Neue', sans-serif;
-            font-size: 1.25rem;
-            letter-spacing: 0.12em;
+            font-size: 1.2rem;
+            letter-spacing: 0.14em;
             color: #fff;
         }
         .nav-logo-sub {
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.6rem;
-            color: rgba(255,255,255,0.35);
+            font-size: 0.58rem;
+            color: rgba(255,255,255,0.3);
             letter-spacing: 0.2em;
             text-transform: uppercase;
-            margin-top: 2px;
+            margin-top: 1px;
         }
-        .nav-status {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+        .nav-status { display: flex; align-items: center; gap: 8px; }
         .status-dot {
             width: 7px; height: 7px;
             border-radius: 50%;
             background: #555;
             transition: background 0.4s;
-            flex-shrink: 0;
         }
-        .status-dot.green  { background: #5cbf6a; }
+        .status-dot.green  { background: #4dba5e; }
         .status-dot.red    { background: #e05252; }
         .status-dot.yellow { background: #f0c040; }
         .status-label {
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.6rem;
+            font-size: 0.58rem;
             letter-spacing: 0.15em;
             text-transform: uppercase;
-            color: rgba(255,255,255,0.4);
+            color: rgba(255,255,255,0.35);
         }
 
-        /* ─── LAYOUT ─── */
-        /* Full-height app shell: navbar + product bar + workspace */
-        body { overflow: hidden; height: 100vh; }
-
+        /* ─── APP SHELL ─── */
         .app-shell {
             display: flex;
             flex-direction: column;
-            height: calc(100vh - 56px);
-            max-width: 1600px;
-            margin: 0 auto;
-            padding: 16px 20px 16px;
-            gap: 12px;
+            height: calc(100vh - 52px);
         }
 
-        /* ─── TOP: PRODUCT LIST BAR ─── */
+        /* ─── PRODUCT BAR ─── */
         .product-bar {
             background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
+            border-bottom: 1px solid var(--border);
             display: flex;
             align-items: stretch;
-            gap: 0;
             flex-shrink: 0;
-            overflow: hidden;
+            height: 60px;
         }
         .product-bar-label {
             display: flex;
             flex-direction: column;
             justify-content: center;
-            padding: 10px 16px;
+            padding: 0 18px;
             border-right: 1px solid var(--border);
             background: var(--surface2);
             flex-shrink: 0;
-            min-width: 110px;
+            min-width: 108px;
         }
         .product-bar-title {
             font-weight: 600;
-            font-size: 0.65rem;
+            font-size: 0.63rem;
             text-transform: uppercase;
             letter-spacing: 0.12em;
             color: var(--text-pri);
@@ -155,7 +133,7 @@
         }
         .product-bar-count {
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.58rem;
+            font-size: 0.57rem;
             color: var(--text-mute);
             margin-top: 2px;
         }
@@ -164,12 +142,11 @@
             align-items: center;
             gap: 6px;
             overflow-x: auto;
-            padding: 8px 12px;
+            padding: 0 14px;
             flex: 1;
             scroll-behavior: smooth;
         }
         .product-bar-scroll::-webkit-scrollbar { height: 3px; }
-        .product-bar-scroll::-webkit-scrollbar-track { background: transparent; }
         .product-bar-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
         /* ─── PRODUCT CHIP ─── */
@@ -177,52 +154,44 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
-            padding: 7px 13px;
+            padding: 7px 12px;
             border-radius: 5px;
             border: 1px solid var(--border2);
             cursor: pointer;
             transition: background 0.15s, border-color 0.15s;
             flex-shrink: 0;
-            min-width: 120px;
-            max-width: 160px;
+            min-width: 115px;
+            max-width: 155px;
             background: var(--bg);
+            height: 44px;
         }
         .product-card:hover { background: var(--surface2); border-color: var(--border); }
-        .product-card.card-active {
-            background: var(--accent);
-            border-color: var(--accent);
-        }
+        .product-card.card-active { background: var(--accent); border-color: var(--accent); }
         .product-card.card-active .card-mill,
         .product-card.card-active .card-sku,
         .product-card.card-active .card-grade,
-        .product-card.card-active .card-thick { color: rgba(255,255,255,0.9); }
-        .product-card.card-active .card-mill { color: rgba(255,255,255,0.5); }
-
+        .product-card.card-active .card-thick { color: rgba(255,255,255,0.85); }
+        .product-card.card-active .card-mill  { color: rgba(255,255,255,0.4); }
         .card-mill {
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.55rem;
+            font-size: 0.53rem;
             letter-spacing: 0.1em;
             color: var(--text-mute);
             text-transform: uppercase;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
         }
         .card-sku {
             font-weight: 600;
-            font-size: 0.68rem;
+            font-size: 0.66rem;
             color: var(--text-pri);
             text-transform: uppercase;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .card-meta {
-            display: flex;
-            justify-content: space-between;
-            margin-top: 3px;
-            gap: 4px;
-        }
+        .card-meta { display: flex; justify-content: space-between; margin-top: 2px; gap: 4px; }
         .card-grade {
-            font-size: 0.58rem;
+            font-size: 0.56rem;
             color: var(--text-mute);
             overflow: hidden;
             text-overflow: ellipsis;
@@ -230,246 +199,270 @@
         }
         .card-thick {
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.58rem;
+            font-size: 0.56rem;
             color: var(--text-sec);
             flex-shrink: 0;
         }
 
-        /* ─── BOTTOM WORKSPACE: 3D left + Spec right ─── */
+        /* ─── MAIN WORKSPACE ─── */
         .workspace {
             display: grid;
-            grid-template-columns: 420px 1fr;
-            gap: 12px;
+            grid-template-columns: 1fr 380px;
             flex: 1;
-            min-height: 0; /* critical for flex children to shrink */
+            min-height: 0;
+            overflow: hidden;
         }
 
-        /* ─── 3D CANVAS ─── */
+        /* ─── 3D CANVAS PANE ─── */
+        .canvas-pane {
+            position: relative;
+            background: var(--canvas-bg);
+            overflow: hidden;
+            border-right: 1px solid #1a1c20;
+        }
+
         #canvas-container {
             width: 100%;
             height: 100%;
-            background: var(--canvas-bg);
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
-            border: 1px solid #1e1e1e;
             cursor: grab;
+            display: block;
         }
         #canvas-container:active { cursor: grabbing; }
+
+        /* Loader overlay */
         #loader {
             position: absolute;
             inset: 0;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: rgba(10,10,10,0.92);
-            z-index: 10;
+            background: rgba(10,12,14,0.93);
+            z-index: 20;
         }
         .loader-inner { text-align: center; }
         .spinner {
-            width: 32px; height: 32px;
-            border: 1.5px solid rgba(255,255,255,0.1);
-            border-top-color: rgba(255,255,255,0.7);
+            width: 30px; height: 30px;
+            border: 1.5px solid rgba(255,255,255,0.08);
+            border-top-color: rgba(255,255,255,0.65);
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+            animation: spin 0.75s linear infinite;
             margin: 0 auto 12px;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
         .loader-text {
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.6rem;
+            font-size: 0.58rem;
             letter-spacing: 0.25em;
             text-transform: uppercase;
-            color: rgba(255,255,255,0.4);
+            color: rgba(255,255,255,0.35);
         }
 
-        /* Canvas corner labels */
-        .canvas-corner {
+        /* Canvas HUD labels */
+        .canvas-hud {
             position: absolute;
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.55rem;
+            font-size: 0.53rem;
             letter-spacing: 0.1em;
-            color: rgba(255,255,255,0.2);
-            pointer-events: none;
-            z-index: 5;
-        }
-        .canvas-tl { top: 12px; left: 14px; }
-        .canvas-tr { top: 12px; right: 14px; text-align: right; }
-        .canvas-br { bottom: 12px; right: 14px; }
-        .drag-hint {
-            position: absolute;
-            bottom: 14px;
-            left: 50%;
-            transform: translateX(-50%);
-            font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.55rem;
-            letter-spacing: 0.12em;
-            text-transform: uppercase;
             color: rgba(255,255,255,0.18);
             pointer-events: none;
             z-index: 5;
+            text-transform: uppercase;
         }
+        .hud-tl { top: 14px; left: 16px; }
+        .hud-tr { top: 14px; right: 16px; text-align: right; }
 
-        /* ─── SPEC PANEL ─── */
+        /* Canvas control bar — bottom of 3D */
+        .canvas-controls {
+            position: absolute;
+            bottom: 0;
+            left: 0; right: 0;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: linear-gradient(to top, rgba(8,10,14,0.85) 0%, transparent 100%);
+            z-index: 10;
+            pointer-events: none;
+        }
+        .ctrl-hint {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.52rem;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.16);
+            pointer-events: none;
+        }
+        .ctrl-btn {
+            pointer-events: all;
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.14);
+            border-radius: 5px;
+            color: rgba(255,255,255,0.55);
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 0.57rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            padding: 5px 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.15s, border-color 0.15s, color 0.15s;
+        }
+        .ctrl-btn:hover {
+            background: rgba(255,255,255,0.14);
+            border-color: rgba(255,255,255,0.28);
+            color: rgba(255,255,255,0.9);
+        }
+        .ctrl-btn.paused {
+            background: rgba(255,200,50,0.12);
+            border-color: rgba(255,200,50,0.35);
+            color: rgba(255,200,50,0.85);
+        }
+        .ctrl-icon { font-size: 0.72rem; line-height: 1; }
+
+        /* ─── SPEC PANEL (right column) ─── */
         .spec-panel {
+            display: flex;
+            flex-direction: column;
             background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            padding: 18px 20px 16px;
-            overflow-y: auto;
-            height: 100%;
+            overflow: hidden;
         }
-        .spec-panel::-webkit-scrollbar { width: 4px; }
-        .spec-panel::-webkit-scrollbar-track { background: transparent; }
-        .spec-panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
 
-        /* Product header */
-        .product-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 12px;
-            padding-bottom: 14px;
-            margin-bottom: 16px;
+        /* Product identity — fixed top of spec panel */
+        .spec-identity {
+            padding: 18px 20px 14px;
             border-bottom: 1px solid var(--border2);
+            flex-shrink: 0;
         }
-        .product-header-left { flex: 1; min-width: 0; }
-        .tag-row {
-            display: flex;
-            gap: 5px;
-            margin-bottom: 6px;
-            flex-wrap: wrap;
-        }
+        .tag-row { display: flex; gap: 5px; margin-bottom: 7px; flex-wrap: wrap; }
         .tag {
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.55rem;
+            font-size: 0.53rem;
             letter-spacing: 0.12em;
             padding: 2px 7px;
             border-radius: 2px;
             text-transform: uppercase;
             font-weight: 600;
         }
-        .tag-mill-badge { background: var(--mark-bg); color: var(--mark-text); }
+        .tag-mill-badge  { background: var(--mark-bg); color: var(--mark-text); }
         .tag-grade-badge { background: transparent; color: var(--text-sec); border: 1px solid var(--border); }
         .product-name {
             font-family: 'Bebas Neue', sans-serif;
-            font-size: 1.9rem;
+            font-size: 2rem;
             letter-spacing: 0.06em;
             color: var(--text-pri);
             line-height: 1;
-            margin-bottom: 4px;
+            margin-bottom: 3px;
         }
         .product-sku {
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.65rem;
+            font-size: 0.62rem;
             color: var(--text-mute);
             letter-spacing: 0.1em;
         }
-        .cert-box {
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            padding: 14px 20px;
-            text-align: center;
-            min-width: 110px;
-            flex-shrink: 0;
+        .cert-strip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border2);
         }
-        .cert-label {
+        .cert-label-sm {
             font-family: 'IBM Plex Mono', monospace;
             font-size: 0.55rem;
-            letter-spacing: 0.18em;
+            letter-spacing: 0.14em;
             text-transform: uppercase;
             color: var(--text-mute);
-            margin-bottom: 6px;
         }
-        .cert-value {
+        .cert-value-sm {
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 1rem;
+            font-size: 0.75rem;
             font-weight: 600;
             color: var(--text-pri);
         }
 
-        /* Spec sections */
-        .section-title {
+        /* ─── SPEC TABLE (scrollable) ─── */
+        .spec-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        .spec-scroll::-webkit-scrollbar { width: 4px; }
+        .spec-scroll::-webkit-scrollbar-track { background: transparent; }
+        .spec-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .spec-section { padding: 0; }
+
+        .spec-section-title {
+            padding: 10px 20px 8px;
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.58rem;
+            font-size: 0.55rem;
             letter-spacing: 0.2em;
             text-transform: uppercase;
             color: var(--text-mute);
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .section-title::after {
-            content: '';
-            flex: 1;
-            height: 1px;
-            background: var(--border2);
-        }
-        .spec-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-            gap: 6px;
-            margin-bottom: 16px;
-        }
-        .spec-item {
             background: var(--surface2);
-            border: 1px solid var(--border2);
-            border-radius: 5px;
-            padding: 8px 10px;
-            transition: border-color 0.15s;
+            border-top: 1px solid var(--border2);
+            border-bottom: 1px solid var(--border2);
+            position: sticky;
+            top: 0;
+            z-index: 2;
         }
-        .spec-item:hover { border-color: var(--border); }
-        .spec-item.highlight {
-            background: var(--accent);
-            border-color: var(--accent);
+
+        .spec-table { width: 100%; border-collapse: collapse; }
+        .spec-table tr {
+            border-bottom: 1px solid var(--border2);
+            transition: background 0.1s;
         }
-        .spec-label {
+        .spec-table tr:hover { background: var(--row-even); }
+        .spec-table tr:last-child { border-bottom: none; }
+        .spec-table td {
+            padding: 9px 20px;
+            vertical-align: middle;
+        }
+        .spec-table td:first-child {
             font-family: 'IBM Plex Mono', monospace;
-            font-size: 0.55rem;
-            letter-spacing: 0.08em;
-            color: var(--text-mute);
+            font-size: 0.57rem;
+            letter-spacing: 0.07em;
             text-transform: uppercase;
-            margin-bottom: 3px;
+            color: var(--text-mute);
+            width: 48%;
+            padding-right: 8px;
         }
-        .spec-item.highlight .spec-label { color: rgba(255,255,255,0.5); }
-        .spec-value {
+        .spec-table td:last-child {
             font-family: 'IBM Plex Mono', monospace;
             font-size: 0.78rem;
             font-weight: 600;
             color: var(--text-pri);
-            word-break: break-word;
+            text-align: right;
         }
-        .spec-item.highlight .spec-value { color: #fff; }
 
-        .section-title { margin-bottom: 8px; }
+        /* Loading method — accent row */
+        .spec-table tr.row-accent td:first-child { color: var(--text-pri); }
+        .spec-table tr.row-accent td:last-child {
+            color: var(--accent);
+            font-weight: 700;
+        }
 
         /* ─── RESPONSIVE ─── */
-        @media (max-width: 1100px) {
-            .workspace { grid-template-columns: 340px 1fr; }
+        @media (max-width: 1000px) {
+            .workspace { grid-template-columns: 1fr 320px; }
         }
-        @media (max-width: 860px) {
-            body { overflow: auto; height: auto; }
-            .app-shell { height: auto; overflow: visible; }
-            .workspace { grid-template-columns: 1fr; }
-            #canvas-container { height: 280px; }
-            .product-name { font-size: 1.5rem; }
-            .spec-panel { height: auto; overflow: visible; }
-        }
-        @media (max-width: 520px) {
-            .spec-grid { grid-template-columns: repeat(2, 1fr); }
-            .product-header { flex-direction: column; }
-            .app-shell { padding: 10px 12px; }
+        @media (max-width: 720px) {
+            body { overflow: auto; }
+            .workspace { grid-template-columns: 1fr; grid-template-rows: 55vw auto; }
+            .spec-scroll { max-height: 60vh; }
         }
 
-        /* ─── PRINT FRIENDLY ─── */
+        /* ─── PRINT ─── */
         @media print {
-            nav, .sidebar { display: none; }
-            main { grid-template-columns: 1fr; }
-            #canvas-container { display: none; }
+            .canvas-pane { display: none; }
+            .workspace { grid-template-columns: 1fr; }
         }
     </style>
+
 </head>
 <body>
 
@@ -477,13 +470,13 @@
     <div class="nav-inner">
         <div class="nav-logo">
             <div class="nav-logo-icon">
-                <svg width="18" height="18" viewBox="0 0 20 20" fill="white" opacity="0.85">
+                <svg width="17" height="17" viewBox="0 0 20 20" fill="white" opacity="0.85">
                     <path d="M11 17a1 1 0 001.447.894l4-2A1 1 0 0017 15V9.236a1 1 0 00-1.447-.894l-4 2a1 1 0 00-.553.894V17zM15.211 6.276a1 1 0 000-1.788l-4.764-2.382a1 1 0 00-.894 0L4.789 4.488a1 1 0 000 1.788l4.764 2.382a1 1 0 00.894 0l4.764-2.382zM4.447 8.342A1 1 0 003 9.236V15a1 1 0 00.553.894l4 2A1 1 0 009 17v-5.764a1 1 0 00-.553-.894l-4-2z"/>
                 </svg>
             </div>
             <div>
                 <div class="nav-logo-title">Steel 3D Catalog</div>
-                <div class="nav-logo-sub">Technical Specification · 22 Columns</div>
+                <div class="nav-logo-sub">Technical Specification · TMT Steel</div>
             </div>
         </div>
         <div class="nav-status">
@@ -495,29 +488,46 @@
 
 <div class="app-shell">
 
-    <!-- ROW 1: PRODUCT LIST BAR (horizontal) -->
+    <!-- PRODUCT BAR -->
     <div class="product-bar">
         <div class="product-bar-label">
             <div class="product-bar-title">Products</div>
             <div id="item-count" class="product-bar-count">Loading...</div>
         </div>
         <div id="product-list" class="product-bar-scroll">
-            <div style="color:var(--text-mute);font-size:0.68rem;font-family:'IBM Plex Mono',monospace;white-space:nowrap;">กำลังโหลด...</div>
+            <div style="color:var(--text-mute);font-size:0.66rem;font-family:'IBM Plex Mono',monospace;white-space:nowrap;">กำลังโหลด...</div>
         </div>
     </div>
 
-    <!-- ROW 2: WORKSPACE — 3D left | Spec right -->
+    <!-- MAIN WORKSPACE -->
     <div class="workspace">
 
         <!-- LEFT: 3D Canvas -->
-        <div id="canvas-container">
-            <div class="canvas-corner canvas-tl">3D PREVIEW</div>
-            <div class="canvas-corner canvas-tr" id="canvas-type-label">—</div>
-            <div class="drag-hint">← DRAG TO ROTATE →</div>
+        <div class="canvas-pane">
+            <div id="canvas-container"></div>
+
+            <!-- HUD labels -->
+            <div class="canvas-hud hud-tl">3D Preview</div>
+            <div class="canvas-hud hud-tr" id="canvas-type-label">—</div>
+
+            <!-- Bottom controls -->
+            <div class="canvas-controls">
+                <span class="ctrl-hint">drag to rotate</span>
+                <button class="ctrl-btn" id="btn-pause" onclick="toggleRotation()">
+                    <span class="ctrl-icon" id="pause-icon">⏸</span>
+                    <span id="pause-label">Pause</span>
+                </button>
+                <button class="ctrl-btn" id="btn-reset" onclick="resetRotation()">
+                    <span class="ctrl-icon">⟳</span>
+                    <span>Reset</span>
+                </button>
+            </div>
+
+            <!-- Loader overlay -->
             <div id="loader">
                 <div class="loader-inner">
                     <div class="spinner"></div>
-                    <div class="loader-text">Initializing Visualization</div>
+                    <div class="loader-text">Initializing 3D</div>
                 </div>
             </div>
         </div>
@@ -525,54 +535,60 @@
         <!-- RIGHT: Spec Panel -->
         <div class="spec-panel">
 
-            <!-- Product Header -->
-            <div class="product-header">
-                <div class="product-header-left">
-                    <div class="tag-row">
-                        <span id="label-mill" class="tag tag-mill-badge">—</span>
-                        <span id="label-grade" class="tag tag-grade-badge">—</span>
-                    </div>
-                    <div id="product-title" class="product-name">SELECT PRODUCT</div>
-                    <div id="product-sku-detail" class="product-sku">SKU: —</div>
+            <!-- Fixed identity header -->
+            <div class="spec-identity">
+                <div class="tag-row">
+                    <span id="label-mill"  class="tag tag-mill-badge">—</span>
+                    <span id="label-grade" class="tag tag-grade-badge">—</span>
                 </div>
-                <div class="cert-box">
-                    <div class="cert-label">Certificate</div>
-                    <div id="v-cert" class="cert-value">—</div>
+                <div id="product-title" class="product-name">SELECT PRODUCT</div>
+                <div id="product-sku-detail" class="product-sku">SKU: —</div>
+                <div class="cert-strip">
+                    <span class="cert-label-sm">Certificate</span>
+                    <span id="v-cert" class="cert-value-sm">—</span>
                 </div>
             </div>
 
-            <!-- Section 1 -->
-            <div class="section-title">Physical Dimensions &amp; Tolerances</div>
-            <div class="spec-grid">
-                <div class="spec-item"><p class="spec-label">Thickness</p><p id="v-thick" class="spec-value">—</p></div>
-                <div class="spec-item"><p class="spec-label">Tol. Thickness</p><p id="v-thick-tol" class="spec-value">—</p></div>
-                <div class="spec-item"><p class="spec-label">Thickness Aiming</p><p id="v-aim" class="spec-value">—</p></div>
-                <div class="spec-item"><p class="spec-label">Tol. Aiming</p><p id="v-aim-tol" class="spec-value">—</p></div>
-                <div class="spec-item"><p class="spec-label">Width</p><p id="v-width" class="spec-value">—</p></div>
-                <div class="spec-item"><p class="spec-label">OD Spec</p><p id="v-od-spec" class="spec-value">—</p></div>
-                <div class="spec-item"><p class="spec-label">OD Set up</p><p id="v-od-setup" class="spec-value">—</p></div>
-                <div class="spec-item"><p class="spec-label">Tol. OD Set up</p><p id="v-od-tol" class="spec-value">—</p></div>
-            </div>
+            <!-- Scrollable spec table -->
+            <div class="spec-scroll">
 
-            <!-- Section 2 -->
-            <div class="section-title">Weights &amp; Standards</div>
-            <div class="spec-grid">
-                <div class="spec-item"><p class="spec-label">Weight TIS STD</p><p id="v-w-tis" class="spec-value">—</p></div>
-                <div class="spec-item"><p class="spec-label">Tol. Weight TIS</p><p id="v-w-tis-tol" class="spec-value">—</p></div>
-                <div class="spec-item"><p class="spec-label">Weight TMT STD</p><p id="v-w-tmt" class="spec-value">—</p></div>
-            </div>
+                <div class="spec-section">
+                    <div class="spec-section-title">Physical Dimensions &amp; Tolerances</div>
+                    <table class="spec-table">
+                        <tr><td>Thickness</td>          <td id="v-thick">—</td></tr>
+                        <tr><td>Tol. Thickness</td>     <td id="v-thick-tol">—</td></tr>
+                        <tr><td>Thickness Aiming</td>   <td id="v-aim">—</td></tr>
+                        <tr><td>Tol. Aiming</td>        <td id="v-aim-tol">—</td></tr>
+                        <tr><td>Width</td>              <td id="v-width">—</td></tr>
+                        <tr><td>OD Spec</td>            <td id="v-od-spec">—</td></tr>
+                        <tr><td>OD Set up</td>          <td id="v-od-setup">—</td></tr>
+                        <tr><td>Tol. OD Set up</td>     <td id="v-od-tol">—</td></tr>
+                    </table>
+                </div>
 
-            <!-- Section 3 -->
-            <div class="section-title">Finishing, Marking &amp; Packaging</div>
-            <div class="spec-grid">
-                <div class="spec-item"><p class="spec-label">Marking Format</p><p id="v-mark" class="spec-value">—</p></div>
-                <div class="spec-item"><p class="spec-label">Packing Type</p><p id="v-pack" class="spec-value">—</p></div>
-                <div class="spec-item"><p class="spec-label">Strapping Pattern</p><p id="v-strap" class="spec-value">—</p></div>
-                <div class="spec-item"><p class="spec-label">Sticker Labeling</p><p id="v-sticker" class="spec-value">—</p></div>
-                <div class="spec-item"><p class="spec-label">Pcs / Pack</p><p id="v-pcs" class="spec-value">—</p></div>
-                <div class="spec-item"><p class="spec-label">Kg / Bundle</p><p id="v-kg" class="spec-value">—</p></div>
-                <div class="spec-item highlight"><p class="spec-label">Loading Method</p><p id="v-loading" class="spec-value">—</p></div>
-            </div>
+                <div class="spec-section">
+                    <div class="spec-section-title">Weights &amp; Standards</div>
+                    <table class="spec-table">
+                        <tr><td>Weight TIS STD</td>     <td id="v-w-tis">—</td></tr>
+                        <tr><td>Tol. Weight TIS</td>    <td id="v-w-tis-tol">—</td></tr>
+                        <tr><td>Weight TMT STD</td>     <td id="v-w-tmt">—</td></tr>
+                    </table>
+                </div>
+
+                <div class="spec-section">
+                    <div class="spec-section-title">Finishing, Marking &amp; Packaging</div>
+                    <table class="spec-table">
+                        <tr><td>Marking Format</td>     <td id="v-mark">—</td></tr>
+                        <tr><td>Packing Type</td>       <td id="v-pack">—</td></tr>
+                        <tr><td>Strapping Pattern</td>  <td id="v-strap">—</td></tr>
+                        <tr><td>Sticker Labeling</td>   <td id="v-sticker">—</td></tr>
+                        <tr><td>Pcs / Pack</td>         <td id="v-pcs">—</td></tr>
+                        <tr><td>Kg / Bundle</td>        <td id="v-kg">—</td></tr>
+                        <tr class="row-accent"><td>Loading Method</td><td id="v-loading">—</td></tr>
+                    </table>
+                </div>
+
+            </div><!-- end .spec-scroll -->
 
         </div><!-- end .spec-panel -->
 
@@ -594,6 +610,8 @@
     var scene, camera, renderer, currentModel;
     var isDragging = false, prevX = 0, prevY = 0;
     var loadTimeout = null;
+    var isAutoRotating = true;
+    var initRotY = 0.32, initRotX = -0.10;
 
     var container = document.getElementById('canvas-container');
 
@@ -707,74 +725,122 @@
     function init3D() {
         if (!container || typeof THREE === 'undefined') return;
 
-        scene    = new THREE.Scene();
-        scene.background = new THREE.Color(0x111315);
-        scene.fog = new THREE.FogExp2(0x111315, 0.045);
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0c0e11);
 
-        camera   = new THREE.PerspectiveCamera(52, container.clientWidth / container.clientHeight, 0.1, 200);
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.05, 300);
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
         renderer.setSize(container.clientWidth, container.clientHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.05;
+        renderer.toneMappingExposure = 0.90;
         renderer.outputEncoding = THREE.sRGBEncoding;
         container.appendChild(renderer.domElement);
 
-        // ── 3-POINT LIGHTING ──────────────────────────────────────
-        // 1. Ambient warm (simulates environment bounce)
-        var ambLight = new THREE.AmbientLight(0xffe8c8, 0.28);
-        scene.add(ambLight);
+        // PMREMGenerator — bake RoomEnvironment for IBL reflections on steel
+        var pmremGen = new THREE.PMREMGenerator(renderer);
+        pmremGen.compileEquirectangularShader();
+        var envRT = pmremGen.fromScene(new THREE.RoomEnvironment(), 0.04);
+        scene.environment = envRT.texture;
+        pmremGen.dispose();
 
-        // 2. Overhead key light — casts hard shadow top-down
-        var keyLight = new THREE.DirectionalLight(0xfff5e0, 2.4);
-        keyLight.position.set(0, 14, 3);
-        keyLight.castShadow = true;
-        keyLight.shadow.camera.near = 0.5;
-        keyLight.shadow.camera.far  = 50;
-        keyLight.shadow.camera.left   = -10;
-        keyLight.shadow.camera.right  =  10;
-        keyLight.shadow.camera.top    =  10;
-        keyLight.shadow.camera.bottom = -10;
-        keyLight.shadow.mapSize.set(2048, 2048);
-        keyLight.shadow.bias = -0.001;
-        scene.add(keyLight);
+        // Hemisphere: warm yellow ceiling / cool teal floor bounce
+        var hemi = new THREE.HemisphereLight(0xfff0d0, 0x0d2030, 0.55);
+        scene.add(hemi);
 
-        // 3. Front fill — soften harsh shadows facing camera
-        var fillLight = new THREE.DirectionalLight(0xb0d4ff, 0.6);
-        fillLight.position.set(0, 2, 12);
-        scene.add(fillLight);
+        // Key: overhead-front-right — creates the long specular streak on cylinders
+        var key = new THREE.DirectionalLight(0xfff6ee, 3.5);
+        key.position.set(6, 18, 10);
+        key.castShadow = true;
+        key.shadow.camera.near   = 1;
+        key.shadow.camera.far    = 60;
+        key.shadow.camera.left   = -14;
+        key.shadow.camera.right  =  14;
+        key.shadow.camera.top    =  14;
+        key.shadow.camera.bottom = -14;
+        key.shadow.mapSize.set(2048, 2048);
+        key.shadow.bias = -0.0005;
+        key.shadow.normalBias = 0.025;
+        scene.add(key);
 
-        // 4. Rim / edge backlight — separates steel from dark bg
-        var rimLight = new THREE.DirectionalLight(0xff9955, 0.55);
-        rimLight.position.set(-8, 3, -10);
-        scene.add(rimLight);
+        // Fill: soft blue-grey from camera-left — industrial skylight
+        var fill = new THREE.DirectionalLight(0x9abcdf, 1.1);
+        fill.position.set(-12, 5, 8);
+        scene.add(fill);
 
-        // Camera: rear/end view — looking straight into cut-face of pipes
-        camera.position.set(0, 2.2, 10);
+        // Rim-1: warm orange-gold from behind-right — bright edge highlight on dark steel
+        var rim1 = new THREE.DirectionalLight(0xffaa44, 2.2);
+        rim1.position.set(10, 3, -14);
+        scene.add(rim1);
+
+        // Rim-2: cool cyan from behind-left — second specular edge
+        var rim2 = new THREE.DirectionalLight(0x44ccdd, 0.8);
+        rim2.position.set(-10, 2, -12);
+        scene.add(rim2);
+
+        // Camera
+        camera.position.set(0, 2.8, 11.5);
         camera.lookAt(0, 0, 0);
 
-        // Subtle floor grid
-        var grid = new THREE.GridHelper(20, 30, 0x242424, 0x1a1a1a);
-        grid.position.y = -3.2;
-        grid.receiveShadow = true;
+        // Floor — dark brushed-concrete, receives shadows
+        var floorGeo = new THREE.PlaneGeometry(50, 50);
+        var floorMat = new THREE.MeshStandardMaterial({
+            color: 0x080a0d,
+            metalness: 0.04,
+            roughness: 0.80,
+            envMapIntensity: 0.3
+        });
+        var floorMesh = new THREE.Mesh(floorGeo, floorMat);
+        floorMesh.rotation.x = -Math.PI / 2;
+        floorMesh.position.y = -3.6;
+        floorMesh.receiveShadow = true;
+        scene.add(floorMesh);
+
+        var grid = new THREE.GridHelper(40, 50, 0x181c22, 0x111418);
+        grid.position.y = -3.59;
         scene.add(grid);
 
         animate();
     }
 
-    // ── MATERIAL FACTORY ──────────────────────────────────────────
-    function makeSteelMat(colorHex, metalness, roughness) {
-        return new THREE.MeshStandardMaterial({
-            color: colorHex !== undefined ? colorHex : 0x1e2025,
-            metalness: metalness !== undefined ? metalness : 0.92,
-            roughness: roughness !== undefined ? roughness : 0.22
-        });
+    // Procedural noise normal-map — mill-scale surface texture
+    function makeNormalTex(size, str) {
+        var sz = size || 128;
+        var data = new Uint8Array(sz * sz * 4);
+        for (var i = 0; i < sz * sz; i++) {
+            // Layered noise: coarse + fine
+            var nx = (Math.random() - 0.5) * (str || 14) + (Math.random() - 0.5) * 4;
+            var ny = (Math.random() - 0.5) * (str || 14) + (Math.random() - 0.5) * 4;
+            data[i*4]   = Math.max(0, Math.min(255, Math.round(128 + nx)));
+            data[i*4+1] = Math.max(0, Math.min(255, Math.round(128 + ny)));
+            data[i*4+2] = 255;
+            data[i*4+3] = 255;
+        }
+        var tex = new THREE.DataTexture(data, sz, sz, THREE.RGBAFormat);
+        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+        tex.repeat.set(6, 6);
+        tex.needsUpdate = true;
+        return tex;
     }
 
-    // ── HEX CLOSE-PACK POSITIONS ─────────────────────────────────
-    // Returns array of {x, y} for N pipes in honeycomb layout
+    // Material factory — PBR steel
+    function makeSteelMat(opts) {
+        var mat = new THREE.MeshStandardMaterial({
+            color:           opts.color      !== undefined ? opts.color      : 0x1c2028,
+            metalness:       opts.metalness  !== undefined ? opts.metalness  : 0.97,
+            roughness:       opts.roughness  !== undefined ? opts.roughness  : 0.16,
+            envMapIntensity: opts.envInt     !== undefined ? opts.envInt     : 1.8
+        });
+        if (opts.normalStr !== 0) {
+            mat.normalMap   = makeNormalTex(128, opts.normalStr || 12);
+            mat.normalScale = new THREE.Vector2(0.55, 0.55);
+        }
+        return mat;
+    }
+
+    // Hex close-pack grid positions
     function hexPackPositions(rows, cols, r) {
         var positions = [];
         var dx = r * 2;
@@ -782,151 +848,213 @@
         var startX = -(cols - 1) * dx / 2;
         var startY = -(rows - 1) * dy / 2;
         for (var row = 0; row < rows; row++) {
-            var offset = (row % 2 === 0) ? 0 : r;
+            var offset   = (row % 2 === 0) ? 0 : r;
             var colCount = (row % 2 === 0) ? cols : cols - 1;
             for (var col = 0; col < colCount; col++) {
-                positions.push({
-                    x: startX + offset + col * dx,
-                    y: startY + row * dy
-                });
+                positions.push({ x: startX + offset + col * dx, y: startY + row * dy });
             }
         }
         return positions;
     }
 
+    function disposeMesh(obj) {
+        if (obj.geometry) obj.geometry.dispose();
+        if (obj.material) {
+            var mats = Array.isArray(obj.material) ? obj.material : [obj.material];
+            mats.forEach(function(m) {
+                if (m.normalMap) m.normalMap.dispose();
+                m.dispose();
+            });
+        }
+    }
+
     function createModel(type) {
         if (currentModel) {
             scene.remove(currentModel);
-            currentModel.traverse(function(obj) {
-                if (obj.geometry) obj.geometry.dispose();
-                if (obj.material) {
-                    if (Array.isArray(obj.material)) {
-                        obj.material.forEach(function(m) { m.dispose(); });
-                    } else {
-                        obj.material.dispose();
-                    }
-                }
-            });
+            currentModel.traverse(disposeMesh);
             currentModel = null;
         }
 
         var group = new THREE.Group();
 
-        // Main steel color: near-black 0x1e2025
-        // Partial pipes (oxidized/cut-end exposure): red-brown 0x8b2c10
-        var matSteel    = makeSteelMat(0x1e2025, 0.92, 0.22);
-        var matCutFace  = makeSteelMat(0x8b2c10, 0.65, 0.55); // red-brown cut-face
-        var matInner    = makeSteelMat(0x0d0f11, 0.98, 0.45); // dark hollow bore
-        var matSteel2   = makeSteelMat(0x252830, 0.90, 0.28); // slightly lighter variant
+        // PBR material set
+        var matBody  = makeSteelMat({ color: 0x1c2028, metalness: 0.97, roughness: 0.15, normalStr: 10 });
+        var matBody2 = makeSteelMat({ color: 0x232b36, metalness: 0.95, roughness: 0.20, normalStr: 13 });
+        var matCut   = makeSteelMat({ color: 0x9a3e1c, metalness: 0.72, roughness: 0.50, envInt: 0.9, normalStr: 30 });
+        var matBore  = makeSteelMat({ color: 0x080b0e, metalness: 0.25, roughness: 0.82, envInt: 0.15, normalStr: 5 });
+        var matWeld  = makeSteelMat({ color: 0x141820, metalness: 0.99, roughness: 0.10, normalStr: 6 });
 
         if (type === 'pipe') {
-            // ── HEXAGONAL CLOSE-PACKING (honeycomb) ──────────────
-            // Realistic steel pipe bundle viewed from rear (end-face)
-            var R      = 0.60;   // outer radius
-            var wall   = 0.072;  // wall thickness
-            var iR     = R - wall;
-            var LENGTH = 7.5;
-            var segs   = 48;
+            var R    = 0.58;
+            var wall = 0.068;
+            var iR   = R - wall;
+            var LEN  = 8.2;
+            var SEGS = 60;
 
-            var positions = hexPackPositions(4, 5, R + 0.03);
+            var positions = hexPackPositions(4, 5, R + 0.022);
 
             positions.forEach(function(pos, idx) {
-                var pipeGroup = new THREE.Group();
+                var pg  = new THREE.Group();
+                var bMat = (idx % 5 === 2 || idx % 7 === 0) ? matBody2 : matBody;
 
-                // Outer shell (cylinder body) — viewed along Z-axis
-                var outerGeo = new THREE.CylinderGeometry(R, R, LENGTH, segs, 1, true);
-                var outerMesh = new THREE.Mesh(outerGeo, (idx % 7 === 0) ? matSteel2 : matSteel);
+                // Outer barrel — open cylinder for correct inside shading
+                var outerGeo = new THREE.CylinderGeometry(R, R, LEN, SEGS, 2, true);
+                var outerMesh = new THREE.Mesh(outerGeo, bMat);
                 outerMesh.rotation.x = Math.PI / 2;
-                outerMesh.castShadow = true;
+                outerMesh.castShadow  = true;
                 outerMesh.receiveShadow = true;
-                pipeGroup.add(outerMesh);
+                pg.add(outerMesh);
+
+                // Weld seam — narrow longitudinal strip proud of surface
+                var weldGeo = new THREE.CylinderGeometry(
+                    R + 0.006, R + 0.006, LEN, 6, 1, true,
+                    Math.PI * 0.24, Math.PI * 0.05
+                );
+                var weldMesh = new THREE.Mesh(weldGeo, matWeld);
+                weldMesh.rotation.x = Math.PI / 2;
+                // Random seam angle per pipe
+                var seedAngle = (idx * 137.5 % 360) * Math.PI / 180;
+                weldMesh.rotation.z = seedAngle;
+                pg.add(weldMesh);
 
                 // Inner bore
-                var innerGeo = new THREE.CylinderGeometry(iR, iR, LENGTH + 0.05, segs, 1, true);
-                var innerMesh = new THREE.Mesh(innerGeo, matInner);
-                innerMesh.rotation.x = Math.PI / 2;
-                pipeGroup.add(innerMesh);
+                var boreGeo  = new THREE.CylinderGeometry(iR, iR, LEN + 0.02, SEGS, 1, true);
+                var boreMesh = new THREE.Mesh(boreGeo, matBore);
+                boreMesh.rotation.x = Math.PI / 2;
+                pg.add(boreMesh);
 
-                // Front cut-face ring (facing camera — red-brown)
-                var frontRing = new THREE.Mesh(new THREE.RingGeometry(iR, R, segs), matCutFace);
-                frontRing.position.z = LENGTH / 2;
-                pipeGroup.add(frontRing);
+                // Front annular ring — raw cut face, reddish-brown
+                var frontRing = new THREE.Mesh(new THREE.RingGeometry(iR, R, SEGS, 2), matCut);
+                frontRing.position.z = LEN / 2;
+                pg.add(frontRing);
 
-                // Back end ring (darker)
-                var backRing = new THREE.Mesh(new THREE.RingGeometry(iR, R, segs), matSteel);
-                backRing.rotation.x = Math.PI;
-                backRing.position.z = -LENGTH / 2;
-                pipeGroup.add(backRing);
+                // Back annular ring
+                var backRing = new THREE.Mesh(new THREE.RingGeometry(iR, R, SEGS, 2), matBody);
+                backRing.rotation.y = Math.PI;
+                backRing.position.z = -LEN / 2;
+                pg.add(backRing);
 
-                pipeGroup.position.set(pos.x, pos.y, 0);
-                group.add(pipeGroup);
+                pg.position.set(pos.x, pos.y, (idx % 3 - 1) * 0.12);
+                group.add(pg);
             });
 
-            // Shift bundle to center vertically
-            group.position.set(0, -0.4, 0);
+            group.position.set(0, -0.3, 0);
 
         } else if (type === 'angle') {
-            var shape = new THREE.Shape();
-            shape.moveTo(0, 0); shape.lineTo(1.2, 0); shape.lineTo(1.2, 0.1);
-            shape.lineTo(0.1, 0.1); shape.lineTo(0.1, 1.2); shape.lineTo(0, 1.2);
-            shape.closePath();
-            var extOpts = { depth: 6.5, bevelEnabled: false };
-            var geo = new THREE.ExtrudeGeometry(shape, extOpts);
-            var mesh = new THREE.Mesh(geo, matSteel);
-            mesh.castShadow = true;
-            mesh.position.set(-0.6, -0.6, -3.25);
-            group.add(mesh);
+            var aShape = new THREE.Shape();
+            aShape.moveTo(0, 0);
+            aShape.lineTo(1.4, 0);     aShape.lineTo(1.4, 0.115);
+            aShape.lineTo(0.115, 0.115); aShape.lineTo(0.115, 1.4);
+            aShape.lineTo(0, 1.4);     aShape.closePath();
+            var aGeo = new THREE.ExtrudeGeometry(aShape, {
+                depth: 7.5,
+                bevelEnabled: true, bevelThickness: 0.014, bevelSize: 0.014, bevelSegments: 3
+            });
+            var aMesh = new THREE.Mesh(aGeo, matBody);
+            aMesh.castShadow = true; aMesh.receiveShadow = true;
+            aMesh.position.set(-0.7, -0.7, -3.75);
+            group.add(aMesh);
+
+            // Cut-face on front end
+            var cfShape = new THREE.Shape();
+            cfShape.moveTo(0, 0); cfShape.lineTo(1.4, 0); cfShape.lineTo(1.4, 0.115);
+            cfShape.lineTo(0.115, 0.115); cfShape.lineTo(0.115, 1.4);
+            cfShape.lineTo(0, 1.4); cfShape.closePath();
+            var cfGeo  = new THREE.ShapeGeometry(cfShape);
+            var cfMesh = new THREE.Mesh(cfGeo, matCut);
+            cfMesh.position.set(-0.7, -0.7, 3.75);
+            group.add(cfMesh);
 
         } else if (type === 'hbeam') {
-            var web = new THREE.Mesh(new THREE.BoxGeometry(0.1, 1.2, 6.5), matSteel);
-            var f1  = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.12, 6.5), matSteel);
-            var f2  = new THREE.Mesh(new THREE.BoxGeometry(1.0, 0.12, 6.5), matSteel);
-            web.castShadow = true; f1.castShadow = true; f2.castShadow = true;
-            f1.position.y = 0.65; f2.position.y = -0.65;
-            group.add(web, f1, f2);
+            var hbev = { bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 2, depth: 7.5 };
+
+            var webShape = new THREE.Shape();
+            webShape.moveTo(-0.065, -0.68); webShape.lineTo(0.065, -0.68);
+            webShape.lineTo(0.065, 0.68); webShape.lineTo(-0.065, 0.68);
+            webShape.closePath();
+            var webGeo  = new THREE.ExtrudeGeometry(webShape, hbev);
+            var webMesh = new THREE.Mesh(webGeo, matBody);
+            webMesh.castShadow = true; webMesh.position.z = -3.75;
+            group.add(webMesh);
+
+            var mkFlange = function(mat) {
+                var s = new THREE.Shape();
+                s.moveTo(-0.56, -0.068); s.lineTo(0.56, -0.068);
+                s.lineTo(0.56, 0.068); s.lineTo(-0.56, 0.068); s.closePath();
+                var g = new THREE.ExtrudeGeometry(s, hbev);
+                var m = new THREE.Mesh(g, mat);
+                m.castShadow = true; m.receiveShadow = true;
+                return m;
+            };
+            var fTop = mkFlange(matBody2); fTop.position.set(0,  0.745, -3.75);
+            var fBot = mkFlange(matBody2); fBot.position.set(0, -0.745, -3.75);
+            group.add(fTop, fBot);
+
+            // H cross-section cut face
+            var hShape = new THREE.Shape();
+            hShape.moveTo(-0.56, -0.813); hShape.lineTo(0.56, -0.813);
+            hShape.lineTo(0.56, -0.677); hShape.lineTo(0.065, -0.677);
+            hShape.lineTo(0.065, 0.677); hShape.lineTo(0.56, 0.677);
+            hShape.lineTo(0.56, 0.813); hShape.lineTo(-0.56, 0.813);
+            hShape.lineTo(-0.56, 0.677); hShape.lineTo(-0.065, 0.677);
+            hShape.lineTo(-0.065, -0.677); hShape.lineTo(-0.56, -0.677);
+            hShape.closePath();
+            var hCutGeo  = new THREE.ShapeGeometry(hShape);
+            var hCutMesh = new THREE.Mesh(hCutGeo, matCut);
+            hCutMesh.position.z = 3.75;
+            group.add(hCutMesh);
 
         } else {
-            // Square / Rectangular Tube — also show end-face
-            var outerW = 1.0, outerH = 1.0, length = 6.5, wall2 = 0.09;
-            var outerGeo2 = new THREE.BoxGeometry(outerW, outerH, length);
-            var innerGeo2 = new THREE.BoxGeometry(outerW - wall2*2, outerH - wall2*2, length + 0.1);
+            // Square tube — 4 wall panels + cut-face frame
+            var oW = 1.1, oH = 1.1, tLen = 7.5, wt = 0.09;
+            var iW = oW - wt * 2, iH = oH - wt * 2;
 
-            var outerMesh2 = new THREE.Mesh(outerGeo2, matSteel);
-            var innerMesh2 = new THREE.Mesh(innerGeo2, matInner);
-            outerMesh2.castShadow = true;
+            var panels = [
+                { geo: new THREE.BoxGeometry(oW, wt, tLen), px: 0,              py:  (oH-wt)/2, pz: 0, mat: matBody  },
+                { geo: new THREE.BoxGeometry(oW, wt, tLen), px: 0,              py: -(oH-wt)/2, pz: 0, mat: matBody  },
+                { geo: new THREE.BoxGeometry(wt, iH, tLen), px:  (oW-wt)/2,    py: 0,           pz: 0, mat: matBody2 },
+                { geo: new THREE.BoxGeometry(wt, iH, tLen), px: -(oW-wt)/2,    py: 0,           pz: 0, mat: matBody2 }
+            ];
+            panels.forEach(function(p) {
+                var m = new THREE.Mesh(p.geo, p.mat);
+                m.position.set(p.px, p.py, p.pz);
+                m.castShadow = true; m.receiveShadow = true;
+                group.add(m);
+            });
 
-            // Front face plane to show cut
-            var frontFace = new THREE.Mesh(
-                new THREE.PlaneGeometry(outerW, outerH),
-                matCutFace
-            );
-            frontFace.position.z = length / 2;
+            // Cut-face: hollow square ring
+            var sqOuter = new THREE.Shape();
+            sqOuter.moveTo(-oW/2, -oH/2); sqOuter.lineTo(oW/2, -oH/2);
+            sqOuter.lineTo(oW/2, oH/2); sqOuter.lineTo(-oW/2, oH/2); sqOuter.closePath();
+            var sqHole = new THREE.Path();
+            sqHole.moveTo(-iW/2, -iH/2); sqHole.lineTo(iW/2, -iH/2);
+            sqHole.lineTo(iW/2, iH/2); sqHole.lineTo(-iW/2, iH/2); sqHole.closePath();
+            sqOuter.holes.push(sqHole);
+            var sqCutMesh = new THREE.Mesh(new THREE.ShapeGeometry(sqOuter), matCut);
+            sqCutMesh.position.z = tLen / 2;
+            group.add(sqCutMesh);
 
-            var innerCut = new THREE.Mesh(
-                new THREE.PlaneGeometry(outerW - wall2*2, outerH - wall2*2),
-                matInner
-            );
-            innerCut.position.z = length / 2 + 0.001;
-
-            group.add(outerMesh2, innerMesh2, frontFace, innerCut);
+            // Bore back-face
+            var borePlane = new THREE.Mesh(new THREE.PlaneGeometry(iW, iH), matBore);
+            borePlane.position.z = -tLen / 2;
+            borePlane.rotation.y = Math.PI;
+            group.add(borePlane);
         }
 
-        // Label
-        var typeLabels = { pipe: 'ROUND PIPE · HEX PACK', angle: 'ANGLE IRON', hbeam: 'H-BEAM', box: 'SQUARE TUBE' };
+        var typeLabels = { pipe: 'ROUND PIPE  ·  HEX BUNDLE', angle: 'ANGLE IRON', hbeam: 'H-BEAM', box: 'SQUARE TUBE' };
         document.getElementById('canvas-type-label').textContent = typeLabels[type] || type.toUpperCase();
 
         currentModel = group;
-        // Slight initial tilt — shows end-face and some barrel depth
-        currentModel.rotation.y = 0.38;
-        currentModel.rotation.x = -0.12;
+        currentModel.rotation.y = 0.32;
+        currentModel.rotation.x = -0.10;
         scene.add(currentModel);
     }
 
+    
     function animate() {
         requestAnimationFrame(animate);
-        // Gentle slow rotation — predominantly Y so cut-face stays visible
-        if (currentModel && !isDragging) {
-            currentModel.rotation.y += 0.0025;
+        if (currentModel && !isDragging && isAutoRotating) {
+            currentModel.rotation.y += 0.0022;
         }
         if (renderer && scene && camera) renderer.render(scene, camera);
     }
@@ -1028,6 +1156,28 @@
         init3D();
         loadSheetData();
     });
+
+    // Expose to global for onclick handlers
+    window.toggleRotation = function() {
+        isAutoRotating = !isAutoRotating;
+        var btn   = document.getElementById('btn-pause');
+        var icon  = document.getElementById('pause-icon');
+        var label = document.getElementById('pause-label');
+        if (isAutoRotating) {
+            btn.classList.remove('paused');
+            icon.textContent  = '⏸';
+            label.textContent = 'Pause';
+        } else {
+            btn.classList.add('paused');
+            icon.textContent  = '▶';
+            label.textContent = 'Play';
+        }
+    };
+    window.resetRotation = function() {
+        if (!currentModel) return;
+        currentModel.rotation.y = initRotY;
+        currentModel.rotation.x = initRotX;
+    };
 
 })();
 </script>
