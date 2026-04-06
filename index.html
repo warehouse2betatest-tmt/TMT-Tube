@@ -2,9 +2,9 @@
 <html lang="th">
 <head>
     <meta charset="UTF-8">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='4' fill='%230a0a0a'/><text x='16' y='22' text-anchor='middle' font-size='18' fill='white'>⬡</text></svg>">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Steel 3D Catalog — Technical Specification</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;600&family=Bebas+Neue&display=swap" rel="stylesheet">
     <style>
@@ -721,463 +721,559 @@
         return 'box';
     }
 
-    // ─── THREE.JS ───
+    // ═══════════════════════════════════════════════════════
+    //  CANVAS 2D  — Pure JavaScript, no Three.js dependency
+    // ═══════════════════════════════════════════════════════
+    var canvas2d = null;
+    var ctx2d    = null;
+    var animFrame = null;
+    var rotY = 0.32, rotX = -0.10;
+    isAutoRotating = true;
+    initRotY = 0.32; initRotX = -0.10;
+
+    // ── Math helpers ─────────────────────────────────────
+    function mat4identity() {
+        return [1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1];
+    }
+    function mat4mul(a, b) {
+        var r = [];
+        for (var i = 0; i < 4; i++) {
+            for (var j = 0; j < 4; j++) {
+                var s = 0;
+                for (var k = 0; k < 4; k++) s += a[i*4+k] * b[k*4+j];
+                r[i*4+j] = s;
+            }
+        }
+        return r;
+    }
+    function mat4rotY(a) {
+        var c = Math.cos(a), s = Math.sin(a);
+        return [c,0,s,0, 0,1,0,0, -s,0,c,0, 0,0,0,1];
+    }
+    function mat4rotX(a) {
+        var c = Math.cos(a), s = Math.sin(a);
+        return [1,0,0,0, 0,c,-s,0, 0,s,c,0, 0,0,0,1];
+    }
+    function transformPt(m, p) {
+        return {
+            x: m[0]*p.x + m[1]*p.y + m[2]*p.z + m[3],
+            y: m[4]*p.x + m[5]*p.y + m[6]*p.z + m[7],
+            z: m[8]*p.x + m[9]*p.y + m[10]*p.z + m[11]
+        };
+    }
+    function project(pt, cx, cy, focal) {
+        var z = pt.z + focal;
+        if (z <= 0.01) z = 0.01;
+        var scale = focal / z;
+        return { x: cx + pt.x * scale, y: cy - pt.y * scale, scale: scale, z: pt.z };
+    }
+    function norm3(v) {
+        var l = Math.sqrt(v.x*v.x + v.y*v.y + v.z*v.z) || 1;
+        return { x:v.x/l, y:v.y/l, z:v.z/l };
+    }
+    function dot3(a, b) { return a.x*b.x + a.y*b.y + a.z*b.z; }
+    function cross3(a, b) {
+        return { x: a.y*b.z - a.z*b.y, y: a.z*b.x - a.x*b.z, z: a.x*b.y - a.y*b.x };
+    }
+    function lerp(a, b, t) { return a + (b-a)*t; }
+    function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
+
+    // ── Lighting ──────────────────────────────────────────
+    // Returns brightness [0..1] for a face with given normal (world space)
+    var LIGHTS = [
+        { dir: norm3({x: 0.4,  y: 1.0,  z:  0.6}), color: {r:255,g:248,b:235}, int: 1.0 },
+        { dir: norm3({x:-0.7,  y: 0.3,  z:  0.5}), color: {r:160,g:200,b:240}, int: 0.55 },
+        { dir: norm3({x: 0.6,  y: 0.2,  z: -0.8}), color: {r:255,g:160,b: 60}, int: 0.70 },
+        { dir: norm3({x:-0.5,  y: 0.1,  z: -0.7}), color: {r: 60,g:180,b:220}, int: 0.30 }
+    ];
+    var AMBIENT = { r:28, g:35, b:48 };
+
+    function shade(nx, ny, nz, baseR, baseG, baseB, metalness, roughness) {
+        var n = norm3({x:nx,y:ny,z:nz});
+        var r = AMBIENT.r * baseR/255;
+        var g = AMBIENT.g * baseG/255;
+        var b = AMBIENT.b * baseB/255;
+        for (var li = 0; li < LIGHTS.length; li++) {
+            var L = LIGHTS[li];
+            var d = clamp(dot3(n, L.dir), 0, 1);
+            // Specular (Blinn-Phong simplified)
+            var halfV = norm3({x:L.dir.x, y:L.dir.y, z:L.dir.z+1});
+            var spec = Math.pow(clamp(dot3(n, halfV),0,1), lerp(4, 80, 1-roughness));
+            var specStr = metalness * spec * L.int * 1.4;
+            r += (L.color.r/255 * baseR/255) * d * L.int + L.color.r/255 * specStr;
+            g += (L.color.g/255 * baseG/255) * d * L.int + L.color.g/255 * specStr;
+            b += (L.color.b/255 * baseB/255) * d * L.int + L.color.b/255 * specStr;
+        }
+        return {
+            r: clamp(Math.round(r*255), 0, 255),
+            g: clamp(Math.round(g*255), 0, 255),
+            b: clamp(Math.round(b*255), 0, 255)
+        };
+    }
+
+    function rgbStr(c, alpha) {
+        if (alpha !== undefined && alpha < 1) {
+            return 'rgba('+c.r+','+c.g+','+c.b+','+alpha.toFixed(2)+')';
+        }
+        return 'rgb('+c.r+','+c.g+','+c.b+')';
+    }
+
+    // ── Geometry generators ───────────────────────────────
+    // Cylinder along Z axis, open ends
+    function cylinderFaces(r, len, segs, mat) {
+        var faces = [];
+        var half = len / 2;
+        for (var i = 0; i < segs; i++) {
+            var a0 = (i / segs) * Math.PI * 2;
+            var a1 = ((i+1) / segs) * Math.PI * 2;
+            var c0 = Math.cos(a0), s0 = Math.sin(a0);
+            var c1 = Math.cos(a1), s1 = Math.sin(a1);
+            // Quad: 4 verts, normal pointing outward from axis
+            var nx = (c0 + c1) / 2, ny = (s0 + s1) / 2;
+            faces.push({
+                verts: [
+                    {x: c0*r, y: s0*r, z: -half},
+                    {x: c1*r, y: s1*r, z: -half},
+                    {x: c1*r, y: s1*r, z:  half},
+                    {x: c0*r, y: s0*r, z:  half}
+                ],
+                normal: {x: nx, y: ny, z: 0},
+                mat: mat
+            });
+        }
+        return faces;
+    }
+
+    // Annular ring (end cap) at given z, facing +z or -z
+    function ringFaces(ri, ro, z, faceZ, segs, mat) {
+        var faces = [];
+        for (var i = 0; i < segs; i++) {
+            var a0 = (i / segs) * Math.PI * 2;
+            var a1 = ((i+1) / segs) * Math.PI * 2;
+            var c0 = Math.cos(a0), s0 = Math.sin(a0);
+            var c1 = Math.cos(a1), s1 = Math.sin(a1);
+            faces.push({
+                verts: [
+                    {x: c0*ro, y: s0*ro, z: z},
+                    {x: c1*ro, y: s1*ro, z: z},
+                    {x: c1*ri, y: s1*ri, z: z},
+                    {x: c0*ri, y: s0*ri, z: z}
+                ],
+                normal: {x:0, y:0, z: faceZ},
+                mat: mat
+            });
+        }
+        return faces;
+    }
+
+    // Flat quad
+    function quad(p0,p1,p2,p3, normal, mat) {
+        return [{ verts:[p0,p1,p2,p3], normal:normal, mat:mat }];
+    }
+
+    // Box faces (6 sides) from -hw,-hh,-hl to hw,hh,hl
+    function boxFaces(hw, hh, hl, mat) {
+        return [
+            { verts:[{x:-hw,y:-hh,z:-hl},{x:hw,y:-hh,z:-hl},{x:hw,y:hh,z:-hl},{x:-hw,y:hh,z:-hl}], normal:{x:0,y:0,z:-1}, mat:mat },
+            { verts:[{x:-hw,y:-hh,z:hl},{x:hw,y:-hh,z:hl},{x:hw,y:hh,z:hl},{x:-hw,y:hh,z:hl}],    normal:{x:0,y:0,z:1},  mat:mat },
+            { verts:[{x:-hw,y:-hh,z:-hl},{x:-hw,y:-hh,z:hl},{x:-hw,y:hh,z:hl},{x:-hw,y:hh,z:-hl}],normal:{x:-1,y:0,z:0}, mat:mat },
+            { verts:[{x:hw,y:-hh,z:-hl},{x:hw,y:-hh,z:hl},{x:hw,y:hh,z:hl},{x:hw,y:hh,z:-hl}],    normal:{x:1,y:0,z:0},  mat:mat },
+            { verts:[{x:-hw,y:-hh,z:-hl},{x:hw,y:-hh,z:-hl},{x:hw,y:-hh,z:hl},{x:-hw,y:-hh,z:hl}],normal:{x:0,y:-1,z:0}, mat:mat },
+            { verts:[{x:-hw,y:hh,z:-hl},{x:hw,y:hh,z:-hl},{x:hw,y:hh,z:hl},{x:-hw,y:hh,z:hl}],    normal:{x:0,y:1,z:0},  mat:mat }
+        ];
+    }
+
+    // L-angle section extruded along Z
+    function angleFaces(w, t, len, mat, matCut) {
+        var hl = len/2;
+        var faces = [];
+        // Horizontal leg bottom
+        faces = faces.concat([
+            { verts:[{x:0,y:0,z:-hl},{x:w,y:0,z:-hl},{x:w,y:0,z:hl},{x:0,y:0,z:hl}], normal:{x:0,y:-1,z:0}, mat:mat },
+            { verts:[{x:0,y:t,z:-hl},{x:w,y:t,z:-hl},{x:w,y:t,z:hl},{x:0,y:t,z:hl}], normal:{x:0,y:1,z:0},  mat:mat },
+            { verts:[{x:w,y:0,z:-hl},{x:w,y:t,z:-hl},{x:w,y:t,z:hl},{x:w,y:0,z:hl}], normal:{x:1,y:0,z:0},  mat:mat },
+            // Vertical leg
+            { verts:[{x:0,y:t,z:-hl},{x:t,y:t,z:-hl},{x:t,y:t,z:hl},{x:0,y:t,z:hl}], normal:{x:0,y:1,z:0},  mat:mat },
+            { verts:[{x:0,y:t,z:-hl},{x:0,y:w,z:-hl},{x:0,y:w,z:hl},{x:0,y:t,z:hl}], normal:{x:-1,y:0,z:0}, mat:mat },
+            { verts:[{x:t,y:t,z:-hl},{x:t,y:w,z:-hl},{x:t,y:w,z:hl},{x:t,y:t,z:hl}], normal:{x:1,y:0,z:0},  mat:mat },
+            { verts:[{x:0,y:w,z:-hl},{x:t,y:w,z:-hl},{x:t,y:w,z:hl},{x:0,y:w,z:hl}], normal:{x:0,y:1,z:0},  mat:mat }
+        ]);
+        // Cut faces front/back
+        var cutPts = [{x:0,y:0},{x:w,y:0},{x:w,y:t},{x:t,y:t},{x:t,y:w},{x:0,y:w}];
+        for (var i = 0; i < cutPts.length; i++) {
+            var p0 = cutPts[i], p1 = cutPts[(i+1)%cutPts.length];
+            if (i === cutPts.length-1) break;
+        }
+        // Front cut face (z=+hl, normal +z)
+        var segs2 = 3;
+        for (var ci = 0; ci < cutPts.length-1; ci++) {
+            var cp0 = cutPts[ci], cp1 = cutPts[ci+1];
+            faces.push({ verts:[
+                {x:cp0.x,y:cp0.y,z:hl},{x:cp1.x,y:cp1.y,z:hl},
+                {x:cp1.x,y:cp1.y,z:hl},{x:cp0.x,y:cp0.y,z:hl}
+            ], normal:{x:0,y:0,z:1}, mat:matCut });
+        }
+        return faces;
+    }
+
+    // ── Model geometry ────────────────────────────────────
+    var MODEL_SEGS = 28;   // cylinder segments — balance quality/perf
+    var PIPE_SEGS  = 22;
+
+    // Materials: { r,g,b, metalness, roughness }
+    var MAT_BODY  = {r: 48, g: 56, b: 68,   metalness:0.96, roughness:0.16};
+    var MAT_BODY2 = {r: 58, g: 68, b: 82,   metalness:0.94, roughness:0.22};
+    var MAT_CUT   = {r:165, g: 72, b: 36,   metalness:0.72, roughness:0.50};
+    var MAT_BORE  = {r: 16, g: 20, b: 24,   metalness:0.25, roughness:0.82};
+    var MAT_WELD  = {r: 32, g: 38, b: 46,   metalness:0.99, roughness:0.09};
+
+    var currentFaces = [];  // array of transformed+sorted faces
+    var currentType  = 'pipe';
+
+    function buildPipe() {
+        var R   = 0.58, wall = 0.07, iR = R - wall, LEN = 6.0;
+        var faces = [];
+        // Single pipe centered
+        faces = faces.concat(cylinderFaces(R,   LEN, PIPE_SEGS, MAT_BODY));
+        faces = faces.concat(cylinderFaces(iR,  LEN, PIPE_SEGS, MAT_BORE));
+        faces = faces.concat(ringFaces(iR, R, -LEN/2, -1, PIPE_SEGS, MAT_BODY));
+        faces = faces.concat(ringFaces(iR, R,  LEN/2,  1, PIPE_SEGS, MAT_CUT));
+        return faces;
+    }
+
+    function buildPipeBundle() {
+        // Hex close-pack: 3 rows for performance
+        var R   = 0.50, wall = 0.06, iR = R - wall, LEN = 5.5;
+        var gap = R * 2.04;
+        var rowH = R * Math.sqrt(3) * 1.02;
+        var configs = [
+            // row 0 (3 pipes)
+            {ox: -gap,    oy: -rowH},
+            {ox:  0,      oy: -rowH},
+            {ox:  gap,    oy: -rowH},
+            // row 1 (2 pipes offset)
+            {ox: -gap/2,  oy:  0},
+            {ox:  gap/2,  oy:  0},
+            // row 2 (3 pipes)
+            {ox: -gap,    oy:  rowH},
+            {ox:  0,      oy:  rowH},
+            {ox:  gap,    oy:  rowH}
+        ];
+        var faces = [];
+        for (var pi = 0; pi < configs.length; pi++) {
+            var off = configs[pi];
+            var mat = (pi % 3 === 0) ? MAT_BODY2 : MAT_BODY;
+            var pFaces = [];
+            pFaces = pFaces.concat(cylinderFaces(R, LEN, PIPE_SEGS, mat));
+            pFaces = pFaces.concat(cylinderFaces(iR, LEN, PIPE_SEGS, MAT_BORE));
+            pFaces = pFaces.concat(ringFaces(iR, R, -LEN/2, -1, PIPE_SEGS, mat));
+            pFaces = pFaces.concat(ringFaces(iR, R,  LEN/2,  1, PIPE_SEGS, MAT_CUT));
+            // Offset verts
+            for (var fi = 0; fi < pFaces.length; fi++) {
+                for (var vi = 0; vi < pFaces[fi].verts.length; vi++) {
+                    pFaces[fi].verts[vi] = {
+                        x: pFaces[fi].verts[vi].x + off.ox,
+                        y: pFaces[fi].verts[vi].y + off.oy,
+                        z: pFaces[fi].verts[vi].z
+                    };
+                }
+            }
+            faces = faces.concat(pFaces);
+        }
+        return faces;
+    }
+
+    function buildSqTube() {
+        var oW=1.0, oH=1.0, wt=0.09, iW=oW-wt*2, iH=oH-wt*2, hl=3.0;
+        var faces = [];
+        // 4 walls
+        faces = faces.concat(boxFaces(oW/2, wt/2, hl, MAT_BODY));
+        var tw = faces.slice(-6); // top
+        for (var i=0; i<tw.length; i++) {
+            for (var vi=0; vi<tw[i].verts.length; vi++) tw[i].verts[vi].y += (oH-wt)/2;
+        }
+        faces = faces.concat(boxFaces(oW/2, wt/2, hl, MAT_BODY));
+        var bw = faces.slice(-6);
+        for (var i=0; i<bw.length; i++) {
+            for (var vi=0; vi<bw[i].verts.length; vi++) bw[i].verts[vi].y -= (oH-wt)/2;
+        }
+        // Simpler: just 4 box walls
+        faces = [];
+        // top wall
+        faces = faces.concat(boxFaces(oW/2, wt/2, hl, MAT_BODY).map(function(f){ return {verts:f.verts.map(function(v){return{x:v.x,y:v.y+(oH-wt)/2,z:v.z};}),normal:f.normal,mat:f.mat}; }));
+        // bottom wall
+        faces = faces.concat(boxFaces(oW/2, wt/2, hl, MAT_BODY).map(function(f){ return {verts:f.verts.map(function(v){return{x:v.x,y:v.y-(oH-wt)/2,z:v.z};}),normal:f.normal,mat:f.mat}; }));
+        // left wall
+        faces = faces.concat(boxFaces(wt/2, iH/2, hl, MAT_BODY2).map(function(f){ return {verts:f.verts.map(function(v){return{x:v.x-(oW-wt)/2,y:v.y,z:v.z};}),normal:f.normal,mat:f.mat}; }));
+        // right wall
+        faces = faces.concat(boxFaces(wt/2, iH/2, hl, MAT_BODY2).map(function(f){ return {verts:f.verts.map(function(v){return{x:v.x+(oW-wt)/2,y:v.y,z:v.z};}),normal:f.normal,mat:f.mat}; }));
+        // front cut ring (square)
+        var cutFaces = [
+            // top strip
+            {verts:[{x:-oW/2,y:iH/2,z:hl},{x:oW/2,y:iH/2,z:hl},{x:oW/2,y:oH/2,z:hl},{x:-oW/2,y:oH/2,z:hl}], normal:{x:0,y:0,z:1}, mat:MAT_CUT},
+            {verts:[{x:-oW/2,y:-oH/2,z:hl},{x:oW/2,y:-oH/2,z:hl},{x:oW/2,y:-iH/2,z:hl},{x:-oW/2,y:-iH/2,z:hl}], normal:{x:0,y:0,z:1}, mat:MAT_CUT},
+            {verts:[{x:-oW/2,y:-iH/2,z:hl},{x:-iW/2,y:-iH/2,z:hl},{x:-iW/2,y:iH/2,z:hl},{x:-oW/2,y:iH/2,z:hl}], normal:{x:0,y:0,z:1}, mat:MAT_CUT},
+            {verts:[{x:iW/2,y:-iH/2,z:hl},{x:oW/2,y:-iH/2,z:hl},{x:oW/2,y:iH/2,z:hl},{x:iW/2,y:iH/2,z:hl}], normal:{x:0,y:0,z:1}, mat:MAT_CUT}
+        ];
+        faces = faces.concat(cutFaces);
+        // bore back
+        faces.push({verts:[{x:-iW/2,y:-iH/2,z:-hl},{x:iW/2,y:-iH/2,z:-hl},{x:iW/2,y:iH/2,z:-hl},{x:-iW/2,y:iH/2,z:-hl}], normal:{x:0,y:0,z:-1}, mat:MAT_BORE});
+        return faces;
+    }
+
+    function buildAngle() {
+        var w=1.1, t=0.10, hl=3.2;
+        var faces = [];
+        // H-leg (along x), V-leg (along y)
+        // Bottom face of H
+        faces.push({verts:[{x:0,y:-w/2,z:-hl},{x:w,y:-w/2,z:-hl},{x:w,y:-w/2,z:hl},{x:0,y:-w/2,z:hl}],normal:{x:0,y:-1,z:0},mat:MAT_BODY});
+        // Top face of H
+        faces.push({verts:[{x:0,y:-w/2+t,z:-hl},{x:w,y:-w/2+t,z:-hl},{x:w,y:-w/2+t,z:hl},{x:0,y:-w/2+t,z:hl}],normal:{x:0,y:1,z:0},mat:MAT_BODY2});
+        // Right tip H
+        faces.push({verts:[{x:w,y:-w/2,z:-hl},{x:w,y:-w/2+t,z:-hl},{x:w,y:-w/2+t,z:hl},{x:w,y:-w/2,z:hl}],normal:{x:1,y:0,z:0},mat:MAT_BODY});
+        // Left face H (merges with V)
+        faces.push({verts:[{x:0,y:-w/2,z:-hl},{x:0,y:-w/2+t,z:-hl},{x:0,y:-w/2+t,z:hl},{x:0,y:-w/2,z:hl}],normal:{x:-1,y:0,z:0},mat:MAT_BODY});
+        // V-leg outer left
+        faces.push({verts:[{x:-t/2,y:-w/2+t,z:-hl},{x:t/2,y:-w/2+t,z:-hl},{x:t/2,y:w/2,z:-hl},{x:-t/2,y:w/2,z:-hl}],normal:{x:0,y:0,z:-1},mat:MAT_BODY2});
+        faces.push({verts:[{x:-t/2,y:-w/2+t,z:hl},{x:t/2,y:-w/2+t,z:hl},{x:t/2,y:w/2,z:hl},{x:-t/2,y:w/2,z:hl}],normal:{x:0,y:0,z:1},mat:MAT_CUT});
+        faces.push({verts:[{x:-t/2,y:-w/2+t,z:-hl},{x:-t/2,y:w/2,z:-hl},{x:-t/2,y:w/2,z:hl},{x:-t/2,y:-w/2+t,z:hl}],normal:{x:-1,y:0,z:0},mat:MAT_BODY});
+        faces.push({verts:[{x:t/2,y:-w/2+t,z:-hl},{x:t/2,y:w/2,z:-hl},{x:t/2,y:w/2,z:hl},{x:t/2,y:-w/2+t,z:hl}],normal:{x:1,y:0,z:0},mat:MAT_BODY});
+        faces.push({verts:[{x:-t/2,y:w/2,z:-hl},{x:t/2,y:w/2,z:-hl},{x:t/2,y:w/2,z:hl},{x:-t/2,y:w/2,z:hl}],normal:{x:0,y:1,z:0},mat:MAT_BODY2});
+        // H front/back cut faces
+        faces.push({verts:[{x:0,y:-w/2,z:hl},{x:w,y:-w/2,z:hl},{x:w,y:-w/2+t,z:hl},{x:0,y:-w/2+t,z:hl}],normal:{x:0,y:0,z:1},mat:MAT_CUT});
+        faces.push({verts:[{x:0,y:-w/2,z:-hl},{x:w,y:-w/2,z:-hl},{x:w,y:-w/2+t,z:-hl},{x:0,y:-w/2+t,z:-hl}],normal:{x:0,y:0,z:-1},mat:MAT_BODY});
+        // center offset
+        var offY = (w/2 - t/2) / 2;
+        for (var fi=0; fi<faces.length; fi++) {
+            for (var vi=0; vi<faces[fi].verts.length; vi++) {
+                faces[fi].verts[vi].y -= offY;
+                faces[fi].verts[vi].x -= w/2;
+            }
+        }
+        return faces;
+    }
+
+    function buildHBeam() {
+        var fw=1.1, ft=0.12, wh=0.65, wt=0.08, hl=3.2;
+        var faces = [];
+        // Top flange
+        faces = faces.concat(boxFaces(fw/2, ft/2, hl, MAT_BODY).map(function(f){ return {verts:f.verts.map(function(v){return{x:v.x,y:v.y+wh,z:v.z};}),normal:f.normal,mat:f.mat}; }));
+        // Bottom flange
+        faces = faces.concat(boxFaces(fw/2, ft/2, hl, MAT_BODY).map(function(f){ return {verts:f.verts.map(function(v){return{x:v.x,y:v.y-wh,z:v.z};}),normal:f.normal,mat:f.mat}; }));
+        // Web
+        faces = faces.concat(boxFaces(wt/2, wh, hl, MAT_BODY2));
+        // Cut face (front z=+hl)
+        var hSh = [
+            {x:-fw/2,y:wh+ft},{x:fw/2,y:wh+ft},{x:fw/2,y:wh},
+            {x:wt/2,y:wh},{x:wt/2,y:-wh},
+            {x:fw/2,y:-wh},{x:fw/2,y:-wh-ft},{x:-fw/2,y:-wh-ft},{x:-fw/2,y:-wh},
+            {x:-wt/2,y:-wh},{x:-wt/2,y:wh},{x:-fw/2,y:wh}
+        ];
+        // Triangulate the H cross-section as quads
+        for (var ci=0; ci<hSh.length-1; ci++) {
+            var p0=hSh[ci], p1=hSh[ci+1];
+            faces.push({verts:[
+                {x:p0.x,y:p0.y,z:hl},{x:p1.x,y:p1.y,z:hl},
+                {x:p1.x,y:p1.y,z:hl},{x:p0.x,y:p0.y,z:hl}
+            ],normal:{x:0,y:0,z:1},mat:MAT_CUT});
+        }
+        return faces;
+    }
+
+    function getFaces(type) {
+        if (type === 'pipe')  return buildPipeBundle();
+        if (type === 'angle') return buildAngle();
+        if (type === 'hbeam') return buildHBeam();
+        return buildSqTube();
+    }
+
+    // ── Painter's algorithm renderer ──────────────────────
+    function renderScene() {
+        if (!ctx2d || !canvas2d) return;
+        var W = canvas2d.width, H = canvas2d.height;
+        ctx2d.clearRect(0, 0, W, H);
+
+        // Background gradient
+        var bg = ctx2d.createLinearGradient(0, 0, 0, H);
+        bg.addColorStop(0, '#0e1117');
+        bg.addColorStop(1, '#070a0d');
+        ctx2d.fillStyle = bg;
+        ctx2d.fillRect(0, 0, W, H);
+
+        // Floor lines (perspective grid)
+        var cx = W/2, cy = H*0.58, focal = W * 0.72;
+        var vp = {x:cx, y:cy*0.42};
+        ctx2d.strokeStyle = 'rgba(255,255,255,0.04)';
+        ctx2d.lineWidth = 1;
+        for (var gi=-5; gi<=5; gi++) {
+            var gx = cx + gi * 48;
+            ctx2d.beginPath(); ctx2d.moveTo(gx, H*0.62); ctx2d.lineTo(vp.x, vp.y); ctx2d.stroke();
+        }
+        for (var gy=0; gy<=6; gy++) {
+            var gyy = H*0.62 + gy * (H - H*0.62) / 6;
+            ctx2d.beginPath(); ctx2d.moveTo(0, gyy); ctx2d.lineTo(W, gyy); ctx2d.stroke();
+        }
+
+        // Build transform matrix from current rotation
+        var mY = mat4rotY(rotY);
+        var mX = mat4rotX(rotX);
+        var mRot = mat4mul(mX, mY);
+
+        var faces = getFaces(currentType);
+        var projected = [];
+
+        for (var fi = 0; fi < faces.length; fi++) {
+            var face = faces[fi];
+            // Transform normal
+            var wn = transformPt(mRot, face.normal);
+            // Backface cull (z component of transformed normal < 0 means facing away from camera)
+            // Camera is at +z, so we want faces where wn.z > -0.1
+            // (skip strict culling for hollow shapes — show inner surfaces)
+            // Project vertices
+            var pverts = [];
+            var avgZ = 0;
+            for (var vi = 0; vi < face.verts.length; vi++) {
+                var wv = transformPt(mRot, face.verts[vi]);
+                pverts.push(project(wv, cx, cy, focal));
+                avgZ += wv.z;
+            }
+            avgZ /= face.verts.length;
+
+            // Compute shaded color
+            var mat = face.mat;
+            var sc = shade(wn.x, wn.y, wn.z, mat.r, mat.g, mat.b, mat.metalness, mat.roughness);
+
+            projected.push({
+                pverts: pverts,
+                avgZ: avgZ,
+                color: sc,
+                alpha: 1.0,
+                wn: wn
+            });
+        }
+
+        // Sort by depth (painter's algorithm — furthest first)
+        projected.sort(function(a, b) { return a.avgZ - b.avgZ; });
+
+        // Draw
+        for (var di = 0; di < projected.length; di++) {
+            var pf = projected[di];
+            // Skip near-degenerate faces (zero-area edge lines from cut face triangulation)
+            if (pf.pverts.length < 3) continue;
+            var p0 = pf.pverts[0], p1 = pf.pverts[1], p2 = pf.pverts[2];
+            if (Math.abs((p1.x-p0.x)*(p2.y-p0.y) - (p2.x-p0.x)*(p1.y-p0.y)) < 0.5) continue;
+
+            ctx2d.beginPath();
+            ctx2d.moveTo(pf.pverts[0].x, pf.pverts[0].y);
+            for (var vi2 = 1; vi2 < pf.pverts.length; vi2++) {
+                ctx2d.lineTo(pf.pverts[vi2].x, pf.pverts[vi2].y);
+            }
+            ctx2d.closePath();
+            ctx2d.fillStyle = rgbStr(pf.color, pf.alpha);
+            ctx2d.fill();
+
+            // Thin edge anti-alias stroke
+            ctx2d.strokeStyle = rgbStr(pf.color, 0.35);
+            ctx2d.lineWidth = 0.5;
+            ctx2d.stroke();
+        }
+
+        // Subtle floor reflection blur
+        var refGrad = ctx2d.createLinearGradient(0, H*0.62, 0, H);
+        refGrad.addColorStop(0, 'rgba(40,55,80,0.10)');
+        refGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx2d.fillStyle = refGrad;
+        ctx2d.fillRect(0, H*0.62, W, H - H*0.62);
+    }
+
+    // ── init3D replacement: init Canvas 2D ────────────────
     function init3D() {
-        if (!container || typeof THREE === 'undefined') return;
+        var pane = document.getElementById('canvas-container');
+        if (!pane) return;
 
-        scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0c0e11);
+        canvas2d = document.createElement('canvas');
+        canvas2d.style.width  = '100%';
+        canvas2d.style.height = '100%';
+        canvas2d.style.display = 'block';
+        pane.appendChild(canvas2d);
 
-        camera = new THREE.PerspectiveCamera(42, container.clientWidth / container.clientHeight, 0.05, 300);
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
-        renderer.setSize(container.clientWidth, container.clientHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 0.90;
-        renderer.outputEncoding = THREE.sRGBEncoding;
-        container.appendChild(renderer.domElement);
-
-        // PMREMGenerator — bake RoomEnvironment for IBL reflections on steel
-        var pmremGen = new THREE.PMREMGenerator(renderer);
-        pmremGen.compileEquirectangularShader();
-        var envRT = pmremGen.fromScene(new THREE.RoomEnvironment(), 0.04);
-        scene.environment = envRT.texture;
-        pmremGen.dispose();
-
-        // Hemisphere: warm yellow ceiling / cool teal floor bounce
-        var hemi = new THREE.HemisphereLight(0xfff0d0, 0x0d2030, 0.55);
-        scene.add(hemi);
-
-        // Key: overhead-front-right — creates the long specular streak on cylinders
-        var key = new THREE.DirectionalLight(0xfff6ee, 3.5);
-        key.position.set(6, 18, 10);
-        key.castShadow = true;
-        key.shadow.camera.near   = 1;
-        key.shadow.camera.far    = 60;
-        key.shadow.camera.left   = -14;
-        key.shadow.camera.right  =  14;
-        key.shadow.camera.top    =  14;
-        key.shadow.camera.bottom = -14;
-        key.shadow.mapSize.set(2048, 2048);
-        key.shadow.bias = -0.0005;
-        key.shadow.normalBias = 0.025;
-        scene.add(key);
-
-        // Fill: soft blue-grey from camera-left — industrial skylight
-        var fill = new THREE.DirectionalLight(0x9abcdf, 1.1);
-        fill.position.set(-12, 5, 8);
-        scene.add(fill);
-
-        // Rim-1: warm orange-gold from behind-right — bright edge highlight on dark steel
-        var rim1 = new THREE.DirectionalLight(0xffaa44, 2.2);
-        rim1.position.set(10, 3, -14);
-        scene.add(rim1);
-
-        // Rim-2: cool cyan from behind-left — second specular edge
-        var rim2 = new THREE.DirectionalLight(0x44ccdd, 0.8);
-        rim2.position.set(-10, 2, -12);
-        scene.add(rim2);
-
-        // Camera
-        camera.position.set(0, 2.8, 11.5);
-        camera.lookAt(0, 0, 0);
-
-        // Floor — dark brushed-concrete, receives shadows
-        var floorGeo = new THREE.PlaneGeometry(50, 50);
-        var floorMat = new THREE.MeshStandardMaterial({
-            color: 0x080a0d,
-            metalness: 0.04,
-            roughness: 0.80,
-            envMapIntensity: 0.3
-        });
-        var floorMesh = new THREE.Mesh(floorGeo, floorMat);
-        floorMesh.rotation.x = -Math.PI / 2;
-        floorMesh.position.y = -3.6;
-        floorMesh.receiveShadow = true;
-        scene.add(floorMesh);
-
-        var grid = new THREE.GridHelper(40, 50, 0x181c22, 0x111418);
-        grid.position.y = -3.59;
-        scene.add(grid);
+        function resize() {
+            canvas2d.width  = pane.clientWidth  * Math.min(window.devicePixelRatio, 2);
+            canvas2d.height = pane.clientHeight * Math.min(window.devicePixelRatio, 2);
+        }
+        resize();
+        window.addEventListener('resize', resize);
+        ctx2d = canvas2d.getContext('2d');
 
         animate();
     }
 
-    // Procedural noise normal-map — mill-scale surface texture
-    function makeNormalTex(size, str) {
-        var sz = size || 128;
-        var data = new Uint8Array(sz * sz * 4);
-        for (var i = 0; i < sz * sz; i++) {
-            // Layered noise: coarse + fine
-            var nx = (Math.random() - 0.5) * (str || 14) + (Math.random() - 0.5) * 4;
-            var ny = (Math.random() - 0.5) * (str || 14) + (Math.random() - 0.5) * 4;
-            data[i*4]   = Math.max(0, Math.min(255, Math.round(128 + nx)));
-            data[i*4+1] = Math.max(0, Math.min(255, Math.round(128 + ny)));
-            data[i*4+2] = 255;
-            data[i*4+3] = 255;
-        }
-        var tex = new THREE.DataTexture(data, sz, sz, THREE.RGBAFormat);
-        tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
-        tex.repeat.set(6, 6);
-        tex.needsUpdate = true;
-        return tex;
-    }
-
-    // Material factory — PBR steel
-    function makeSteelMat(opts) {
-        var mat = new THREE.MeshStandardMaterial({
-            color:           opts.color      !== undefined ? opts.color      : 0x1c2028,
-            metalness:       opts.metalness  !== undefined ? opts.metalness  : 0.97,
-            roughness:       opts.roughness  !== undefined ? opts.roughness  : 0.16,
-            envMapIntensity: opts.envInt     !== undefined ? opts.envInt     : 1.8
-        });
-        if (opts.normalStr !== 0) {
-            mat.normalMap   = makeNormalTex(128, opts.normalStr || 12);
-            mat.normalScale = new THREE.Vector2(0.55, 0.55);
-        }
-        return mat;
-    }
-
-    // Hex close-pack grid positions
-    function hexPackPositions(rows, cols, r) {
-        var positions = [];
-        var dx = r * 2;
-        var dy = r * Math.sqrt(3);
-        var startX = -(cols - 1) * dx / 2;
-        var startY = -(rows - 1) * dy / 2;
-        for (var row = 0; row < rows; row++) {
-            var offset   = (row % 2 === 0) ? 0 : r;
-            var colCount = (row % 2 === 0) ? cols : cols - 1;
-            for (var col = 0; col < colCount; col++) {
-                positions.push({ x: startX + offset + col * dx, y: startY + row * dy });
-            }
-        }
-        return positions;
-    }
-
-    function disposeMesh(obj) {
-        if (obj.geometry) obj.geometry.dispose();
-        if (obj.material) {
-            var mats = Array.isArray(obj.material) ? obj.material : [obj.material];
-            mats.forEach(function(m) {
-                if (m.normalMap) m.normalMap.dispose();
-                m.dispose();
-            });
-        }
-    }
-
     function createModel(type) {
-        if (currentModel) {
-            scene.remove(currentModel);
-            currentModel.traverse(disposeMesh);
-            currentModel = null;
-        }
-
-        var group = new THREE.Group();
-
-        // PBR material set
-        var matBody  = makeSteelMat({ color: 0x1c2028, metalness: 0.97, roughness: 0.15, normalStr: 10 });
-        var matBody2 = makeSteelMat({ color: 0x232b36, metalness: 0.95, roughness: 0.20, normalStr: 13 });
-        var matCut   = makeSteelMat({ color: 0x9a3e1c, metalness: 0.72, roughness: 0.50, envInt: 0.9, normalStr: 30 });
-        var matBore  = makeSteelMat({ color: 0x080b0e, metalness: 0.25, roughness: 0.82, envInt: 0.15, normalStr: 5 });
-        var matWeld  = makeSteelMat({ color: 0x141820, metalness: 0.99, roughness: 0.10, normalStr: 6 });
-
-        if (type === 'pipe') {
-            var R    = 0.58;
-            var wall = 0.068;
-            var iR   = R - wall;
-            var LEN  = 8.2;
-            var SEGS = 60;
-
-            var positions = hexPackPositions(4, 5, R + 0.022);
-
-            positions.forEach(function(pos, idx) {
-                var pg  = new THREE.Group();
-                var bMat = (idx % 5 === 2 || idx % 7 === 0) ? matBody2 : matBody;
-
-                // Outer barrel — open cylinder for correct inside shading
-                var outerGeo = new THREE.CylinderGeometry(R, R, LEN, SEGS, 2, true);
-                var outerMesh = new THREE.Mesh(outerGeo, bMat);
-                outerMesh.rotation.x = Math.PI / 2;
-                outerMesh.castShadow  = true;
-                outerMesh.receiveShadow = true;
-                pg.add(outerMesh);
-
-                // Weld seam — narrow longitudinal strip proud of surface
-                var weldGeo = new THREE.CylinderGeometry(
-                    R + 0.006, R + 0.006, LEN, 6, 1, true,
-                    Math.PI * 0.24, Math.PI * 0.05
-                );
-                var weldMesh = new THREE.Mesh(weldGeo, matWeld);
-                weldMesh.rotation.x = Math.PI / 2;
-                // Random seam angle per pipe
-                var seedAngle = (idx * 137.5 % 360) * Math.PI / 180;
-                weldMesh.rotation.z = seedAngle;
-                pg.add(weldMesh);
-
-                // Inner bore
-                var boreGeo  = new THREE.CylinderGeometry(iR, iR, LEN + 0.02, SEGS, 1, true);
-                var boreMesh = new THREE.Mesh(boreGeo, matBore);
-                boreMesh.rotation.x = Math.PI / 2;
-                pg.add(boreMesh);
-
-                // Front annular ring — raw cut face, reddish-brown
-                var frontRing = new THREE.Mesh(new THREE.RingGeometry(iR, R, SEGS, 2), matCut);
-                frontRing.position.z = LEN / 2;
-                pg.add(frontRing);
-
-                // Back annular ring
-                var backRing = new THREE.Mesh(new THREE.RingGeometry(iR, R, SEGS, 2), matBody);
-                backRing.rotation.y = Math.PI;
-                backRing.position.z = -LEN / 2;
-                pg.add(backRing);
-
-                pg.position.set(pos.x, pos.y, (idx % 3 - 1) * 0.12);
-                group.add(pg);
-            });
-
-            group.position.set(0, -0.3, 0);
-
-        } else if (type === 'angle') {
-            var aShape = new THREE.Shape();
-            aShape.moveTo(0, 0);
-            aShape.lineTo(1.4, 0);     aShape.lineTo(1.4, 0.115);
-            aShape.lineTo(0.115, 0.115); aShape.lineTo(0.115, 1.4);
-            aShape.lineTo(0, 1.4);     aShape.closePath();
-            var aGeo = new THREE.ExtrudeGeometry(aShape, {
-                depth: 7.5,
-                bevelEnabled: true, bevelThickness: 0.014, bevelSize: 0.014, bevelSegments: 3
-            });
-            var aMesh = new THREE.Mesh(aGeo, matBody);
-            aMesh.castShadow = true; aMesh.receiveShadow = true;
-            aMesh.position.set(-0.7, -0.7, -3.75);
-            group.add(aMesh);
-
-            // Cut-face on front end
-            var cfShape = new THREE.Shape();
-            cfShape.moveTo(0, 0); cfShape.lineTo(1.4, 0); cfShape.lineTo(1.4, 0.115);
-            cfShape.lineTo(0.115, 0.115); cfShape.lineTo(0.115, 1.4);
-            cfShape.lineTo(0, 1.4); cfShape.closePath();
-            var cfGeo  = new THREE.ShapeGeometry(cfShape);
-            var cfMesh = new THREE.Mesh(cfGeo, matCut);
-            cfMesh.position.set(-0.7, -0.7, 3.75);
-            group.add(cfMesh);
-
-        } else if (type === 'hbeam') {
-            var hbev = { bevelEnabled: true, bevelThickness: 0.012, bevelSize: 0.012, bevelSegments: 2, depth: 7.5 };
-
-            var webShape = new THREE.Shape();
-            webShape.moveTo(-0.065, -0.68); webShape.lineTo(0.065, -0.68);
-            webShape.lineTo(0.065, 0.68); webShape.lineTo(-0.065, 0.68);
-            webShape.closePath();
-            var webGeo  = new THREE.ExtrudeGeometry(webShape, hbev);
-            var webMesh = new THREE.Mesh(webGeo, matBody);
-            webMesh.castShadow = true; webMesh.position.z = -3.75;
-            group.add(webMesh);
-
-            var mkFlange = function(mat) {
-                var s = new THREE.Shape();
-                s.moveTo(-0.56, -0.068); s.lineTo(0.56, -0.068);
-                s.lineTo(0.56, 0.068); s.lineTo(-0.56, 0.068); s.closePath();
-                var g = new THREE.ExtrudeGeometry(s, hbev);
-                var m = new THREE.Mesh(g, mat);
-                m.castShadow = true; m.receiveShadow = true;
-                return m;
-            };
-            var fTop = mkFlange(matBody2); fTop.position.set(0,  0.745, -3.75);
-            var fBot = mkFlange(matBody2); fBot.position.set(0, -0.745, -3.75);
-            group.add(fTop, fBot);
-
-            // H cross-section cut face
-            var hShape = new THREE.Shape();
-            hShape.moveTo(-0.56, -0.813); hShape.lineTo(0.56, -0.813);
-            hShape.lineTo(0.56, -0.677); hShape.lineTo(0.065, -0.677);
-            hShape.lineTo(0.065, 0.677); hShape.lineTo(0.56, 0.677);
-            hShape.lineTo(0.56, 0.813); hShape.lineTo(-0.56, 0.813);
-            hShape.lineTo(-0.56, 0.677); hShape.lineTo(-0.065, 0.677);
-            hShape.lineTo(-0.065, -0.677); hShape.lineTo(-0.56, -0.677);
-            hShape.closePath();
-            var hCutGeo  = new THREE.ShapeGeometry(hShape);
-            var hCutMesh = new THREE.Mesh(hCutGeo, matCut);
-            hCutMesh.position.z = 3.75;
-            group.add(hCutMesh);
-
-        } else {
-            // Square tube — 4 wall panels + cut-face frame
-            var oW = 1.1, oH = 1.1, tLen = 7.5, wt = 0.09;
-            var iW = oW - wt * 2, iH = oH - wt * 2;
-
-            var panels = [
-                { geo: new THREE.BoxGeometry(oW, wt, tLen), px: 0,              py:  (oH-wt)/2, pz: 0, mat: matBody  },
-                { geo: new THREE.BoxGeometry(oW, wt, tLen), px: 0,              py: -(oH-wt)/2, pz: 0, mat: matBody  },
-                { geo: new THREE.BoxGeometry(wt, iH, tLen), px:  (oW-wt)/2,    py: 0,           pz: 0, mat: matBody2 },
-                { geo: new THREE.BoxGeometry(wt, iH, tLen), px: -(oW-wt)/2,    py: 0,           pz: 0, mat: matBody2 }
-            ];
-            panels.forEach(function(p) {
-                var m = new THREE.Mesh(p.geo, p.mat);
-                m.position.set(p.px, p.py, p.pz);
-                m.castShadow = true; m.receiveShadow = true;
-                group.add(m);
-            });
-
-            // Cut-face: hollow square ring
-            var sqOuter = new THREE.Shape();
-            sqOuter.moveTo(-oW/2, -oH/2); sqOuter.lineTo(oW/2, -oH/2);
-            sqOuter.lineTo(oW/2, oH/2); sqOuter.lineTo(-oW/2, oH/2); sqOuter.closePath();
-            var sqHole = new THREE.Path();
-            sqHole.moveTo(-iW/2, -iH/2); sqHole.lineTo(iW/2, -iH/2);
-            sqHole.lineTo(iW/2, iH/2); sqHole.lineTo(-iW/2, iH/2); sqHole.closePath();
-            sqOuter.holes.push(sqHole);
-            var sqCutMesh = new THREE.Mesh(new THREE.ShapeGeometry(sqOuter), matCut);
-            sqCutMesh.position.z = tLen / 2;
-            group.add(sqCutMesh);
-
-            // Bore back-face
-            var borePlane = new THREE.Mesh(new THREE.PlaneGeometry(iW, iH), matBore);
-            borePlane.position.z = -tLen / 2;
-            borePlane.rotation.y = Math.PI;
-            group.add(borePlane);
-        }
-
-        var typeLabels = { pipe: 'ROUND PIPE  ·  HEX BUNDLE', angle: 'ANGLE IRON', hbeam: 'H-BEAM', box: 'SQUARE TUBE' };
-        document.getElementById('canvas-type-label').textContent = typeLabels[type] || type.toUpperCase();
-
-        currentModel = group;
-        currentModel.rotation.y = 0.32;
-        currentModel.rotation.x = -0.10;
-        scene.add(currentModel);
+        currentType = type;
+        var typeLabels = { pipe:'ROUND PIPE  ·  HEX BUNDLE', angle:'ANGLE IRON', hbeam:'H-BEAM', box:'SQUARE TUBE' };
+        var lbl = document.getElementById('canvas-type-label');
+        if (lbl) lbl.textContent = typeLabels[type] || type.toUpperCase();
+        rotY = initRotY; rotX = initRotX;
     }
 
-    
     function animate() {
-        requestAnimationFrame(animate);
-        if (currentModel && !isDragging && isAutoRotating) {
-            currentModel.rotation.y += 0.0022;
+        animFrame = requestAnimationFrame(animate);
+        if (isAutoRotating && !isDragging) {
+            rotY += 0.0022;
         }
-        if (renderer && scene && camera) renderer.render(scene, camera);
+        renderScene();
     }
 
-    // ─── DRAG TO ROTATE (Mouse + Touch) ───
-    container.addEventListener('mousedown',  function(e) { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
-    window.addEventListener('mouseup',       function() { isDragging = false; });
-    window.addEventListener('mousemove',     function(e) {
-        if (!isDragging || !currentModel) return;
-        currentModel.rotation.y += (e.clientX - prevX) * 0.008;
-        currentModel.rotation.x += (e.clientY - prevY) * 0.004;
-        currentModel.rotation.x  = Math.max(-0.6, Math.min(0.6, currentModel.rotation.x));
-        prevX = e.clientX; prevY = e.clientY;
-    });
-
-    container.addEventListener('touchstart', function(e) {
-        if (e.touches.length === 1) { isDragging = true; prevX = e.touches[0].clientX; prevY = e.touches[0].clientY; }
-    }, { passive: true });
-    window.addEventListener('touchend',  function() { isDragging = false; });
-    window.addEventListener('touchmove', function(e) {
-        if (!isDragging || !currentModel || e.touches.length !== 1) return;
-        currentModel.rotation.y += (e.touches[0].clientX - prevX) * 0.008;
-        prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
-    }, { passive: true });
-
-    window.addEventListener('resize', function() {
-        if (!camera || !renderer || !container) return;
-        camera.aspect = container.clientWidth / container.clientHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(container.clientWidth, container.clientHeight);
-    });
-
-    // ─── SELECT PRODUCT ───
-    function selectProduct(id) {
-        var p = null;
-        for (var i = 0; i < steelProducts.length; i++) {
-            if (steelProducts[i].id === id) { p = steelProducts[i]; break; }
-        }
-        if (!p) return;
-
-        document.getElementById('product-title').textContent = p.sku || 'N/A';
-        document.getElementById('product-sku-detail').textContent = 'SKU: ' + fmt(p.sku);
-        document.getElementById('label-mill').textContent  = fmt(p.mill);
-        document.getElementById('label-grade').textContent = fmt(p.grade);
-
-        updateEl('v-cert',     p.cert);
-        updateEl('v-thick',    p.thick);
-        updateEl('v-thick-tol',p.thickTol);
-        updateEl('v-aim',      p.aim);
-        updateEl('v-aim-tol',  p.aimTol);
-        updateEl('v-width',    p.width);
-        updateEl('v-od-spec',  p.odSpec);
-        updateEl('v-od-setup', p.odSetup);
-        updateEl('v-od-tol',   p.odTol);
-        updateEl('v-w-tis',    p.wTis);
-        updateEl('v-w-tis-tol',p.wTisTol);
-        updateEl('v-w-tmt',    p.wTmt);
-        updateEl('v-mark',     p.marking);
-        updateEl('v-pack',     p.pack);
-        updateEl('v-strap',    p.strap);
-        updateEl('v-sticker',  p.sticker);
-        updateEl('v-pcs',      p.pcs);
-        updateEl('v-kg',       p.kg);
-        updateEl('v-loading',  p.loading);
-
-        createModel(p.type);
-
-        document.querySelectorAll('.product-card').forEach(function(c) { c.classList.remove('card-active'); });
-        var activeCard = document.getElementById('card-' + id);
-        if (activeCard) {
-            activeCard.classList.add('card-active');
-            activeCard.scrollIntoView({ inline: 'nearest', behavior: 'smooth' });
-        }
-    }
-
-    // ─── RENDER LIST ───
-    function renderList() {
-        var list = document.getElementById('product-list');
-        list.innerHTML = '';
-        var frag = document.createDocumentFragment();
-        steelProducts.forEach(function(p) {
-            var card = document.createElement('div');
-            card.id        = 'card-' + p.id;
-            card.className = 'product-card';
-            card.onclick   = (function(pid) { return function() { selectProduct(pid); }; })(p.id);
-            card.innerHTML = '<div class="card-mill">' + fmt(p.mill) + '</div>' +
-                '<div class="card-sku">' + fmt(p.sku) + '</div>' +
-                '<div class="card-meta">' +
-                '<span class="card-grade">' + fmt(p.grade) + '</span>' +
-                '<span class="card-thick">' + fmt(p.thick) + '</span>' +
-                '</div>';
-            frag.appendChild(card);
-        });
-        list.appendChild(frag);
-    }
-
-    // ─── INIT ───
-    document.addEventListener('DOMContentLoaded', function() {
-        init3D();
-        loadSheetData();
-    });
-
-    // Expose to global for onclick handlers
+    // Expose globals for onclick
     window.toggleRotation = function() {
         isAutoRotating = !isAutoRotating;
         var btn   = document.getElementById('btn-pause');
         var icon  = document.getElementById('pause-icon');
         var label = document.getElementById('pause-label');
+        if (!btn) return;
         if (isAutoRotating) {
             btn.classList.remove('paused');
-            icon.textContent  = '⏸';
+            icon.textContent  = '\u23F8';
             label.textContent = 'Pause';
         } else {
             btn.classList.add('paused');
-            icon.textContent  = '▶';
+            icon.textContent  = '\u25B6';
             label.textContent = 'Play';
         }
     };
     window.resetRotation = function() {
-        if (!currentModel) return;
-        currentModel.rotation.y = initRotY;
-        currentModel.rotation.x = initRotX;
+        rotY = initRotY; rotX = initRotX;
     };
+
+
+    // ─── DRAG TO ROTATE ───
+    document.addEventListener('DOMContentLoaded', function() {
+        var pane = document.querySelector('.canvas-pane');
+        if (pane) {
+            pane.addEventListener('mousedown', function(e) { isDragging = true; prevX = e.clientX; prevY = e.clientY; });
+            pane.addEventListener('touchstart', function(e) {
+                if (e.touches.length === 1) { isDragging = true; prevX = e.touches[0].clientX; prevY = e.touches[0].clientY; }
+            }, { passive: true });
+        }
+        window.addEventListener('mouseup',   function() { isDragging = false; });
+        window.addEventListener('mousemove', function(e) {
+            if (!isDragging) return;
+            rotY += (e.clientX - prevX) * 0.008;
+            rotX += (e.clientY - prevY) * 0.004;
+            rotX = Math.max(-0.7, Math.min(0.7, rotX));
+            prevX = e.clientX; prevY = e.clientY;
+        });
+        window.addEventListener('touchend',  function() { isDragging = false; });
+        window.addEventListener('touchmove', function(e) {
+            if (!isDragging || e.touches.length !== 1) return;
+            rotY += (e.touches[0].clientX - prevX) * 0.008;
+            rotX += (e.touches[0].clientY - prevY) * 0.004;
+            prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
+        }, { passive: true });
+
+        init3D();
+        loadSheetData();
+    });
 
 })();
 </script>
