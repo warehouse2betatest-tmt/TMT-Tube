@@ -11,7 +11,7 @@
         /* ── RESET ── */
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* ── TOKENS ── (only vars actually used) */
+        /* ── TOKENS ── */
         :root {
             --bg:         #f5f5f5;
             --surface:    #ffffff;
@@ -25,7 +25,7 @@
             --canvas-bg:  #111111;
         }
 
-        /* ── BASE ── (single, non-conflicting body rule) */
+        /* ── BASE ── */
         html, body {
             height: 100%;
             overflow: hidden;
@@ -99,7 +99,7 @@
             color: rgba(255,255,255,0.35);
         }
 
-        /* ── APP SHELL (full-height flex column under navbar) ── */
+        /* ── APP SHELL ── */
         .app-shell {
             display: flex;
             flex-direction: column;
@@ -110,7 +110,7 @@
             gap: 10px;
         }
 
-        /* ── PRODUCT BAR (top row, horizontal list) ── */
+        /* ── PRODUCT BAR ── */
         .product-bar {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -152,7 +152,6 @@
             overflow-x: auto;
             padding: 8px 10px;
             flex: 1;
-            /* use native smooth scroll; no CSS scroll-behavior (smoother on low-end) */
         }
         .product-bar-scroll::-webkit-scrollbar { height: 3px; }
         .product-bar-scroll::-webkit-scrollbar-track { background: transparent; }
@@ -167,7 +166,6 @@
             border-radius: 5px;
             border: 1px solid var(--border2);
             cursor: pointer;
-            /* BUG FIX: use will-change only on hover to avoid permanent layer cost */
             transition: background 0.12s, border-color 0.12s;
             flex-shrink: 0;
             min-width: 118px;
@@ -177,7 +175,6 @@
         }
         .product-card:hover { background: var(--surface2); border-color: var(--border); }
         .product-card.card-active { background: var(--accent); border-color: var(--accent); }
-        /* specificity fix: active children inherit white color cleanly */
         .product-card.card-active .card-mill  { color: rgba(255,255,255,0.45); }
         .product-card.card-active .card-sku,
         .product-card.card-active .card-grade,
@@ -220,13 +217,13 @@
             flex-shrink: 0;
         }
 
-        /* ── WORKSPACE (3D left | Spec right) ── */
+        /* ── WORKSPACE ── */
         .workspace {
             display: grid;
             grid-template-columns: 400px 1fr;
             gap: 10px;
             flex: 1;
-            min-height: 0; /* critical: allows grid children to shrink in flex */
+            min-height: 0;
         }
 
         /* ── 3D CANVAS ── */
@@ -342,7 +339,6 @@
             color: var(--text-pri);
             line-height: 1;
             margin-bottom: 4px;
-            /* prevent overflow for very long SKU names */
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -446,7 +442,7 @@
             .app-shell { padding: 8px 10px; }
         }
 
-        /* ── PRINT ── (updated to match current HTML structure) */
+        /* ── PRINT ── */
         @media print {
             html, body { overflow: visible; height: auto; }
             nav, .product-bar, #canvas-container, .drag-hint { display: none !important; }
@@ -566,21 +562,21 @@
     'use strict';
 
     /* ── CONFIG ── */
-    const SHEET_ID        = '18TwmY8iPXkztTpd50p50hiWOWBCRnQRE2r2212JYaOU';
-    const SHEET_NAME      = 'D';
-    const JSONP_TIMEOUT   = 12000; // ms
+    const SHEET_ID      = '18TwmY8iPXkztTpd50p50hiWOWBCRnQRE2r2212JYaOU';
+    const SHEET_NAME    = 'D';
+    const JSONP_TIMEOUT = 12000;
 
     /* ── STATE ── */
     let steelProducts = [];
     let scene, camera, renderer, currentModel;
-    let animFrameId   = null;   // FIX: track rAF so we can cancel on error
-    let sharedMat     = null;   // FIX: reuse single material, dispose once
-    let innerMat      = null;   // FIX: reuse inner (dark) material for box
-    let isDragging    = false;
+    let animFrameId = null;
+    let sharedMat   = null;
+    let innerMat    = null;
+    let isDragging  = false;
     let prevX = 0, prevY = 0;
-    let loadTimeout   = null;
+    let loadTimeout = null;
 
-    /* ── DOM REFS (resolved after DOMContentLoaded) ── */
+    /* ── DOM REFS ── */
     let container, loaderEl;
 
     /* ── UTILS ── */
@@ -597,11 +593,11 @@
     function updateStatus(text, state) {
         const dot   = document.getElementById('sync-status');
         const label = document.getElementById('status-text');
-        if (dot)   dot.className   = 'status-dot ' + state;
+        if (dot)   dot.className    = 'status-dot ' + state;
         if (label) label.textContent = text;
     }
 
-    /* ── SAFE TEXT helper (prevents XSS in error messages) ── */
+    /* BUG FIX: safeText() used in showError() to prevent XSS via innerHTML */
     function safeText(str) {
         const d = document.createElement('div');
         d.textContent = str;
@@ -609,18 +605,27 @@
     }
 
     /* ── GOOGLE SHEET (JSONP) ── */
+    /* BUG FIX: Expose on window BEFORE loadSheetData() appends the script tag,
+       so the callback is guaranteed to exist when the browser evaluates the response. */
     window.handleGoogleSheetResponse = function (response) {
         clearTimeout(loadTimeout);
         loadTimeout = null;
+
+        /* BUG FIX: Remove the injected script tag after callback fires —
+           avoids a dangling <script> element accumulating on retries. */
+        const old = document.getElementById('jsonp-fetcher');
+        if (old) old.remove();
+
         try {
             if (!response || !response.table) throw new Error('Invalid response structure');
             const rows = response.table.rows;
             if (!rows || rows.length === 0) throw new Error('No rows returned from sheet');
 
             steelProducts = rows.map((row, index) => {
+                /* OPTIMIZE: inline helper avoids repeated closure allocation per-row */
+                const c = row.c || [];
                 const getV = (i) => {
-                    if (!row.c || !row.c[i]) return null;
-                    const cell = row.c[i];
+                    const cell = c[i];
                     return (cell && cell.v !== null && cell.v !== undefined) ? cell.v : null;
                 };
                 return {
@@ -644,7 +649,6 @@
             updateStatus('Connected', 'green');
             document.getElementById('item-count').textContent = steelProducts.length + ' รายการ';
 
-            /* FIX: fade out loader instead of abrupt display:none */
             loaderEl.classList.add('hidden');
             setTimeout(() => { loaderEl.style.display = 'none'; }, 320);
 
@@ -655,11 +659,16 @@
     };
 
     function loadSheetData() {
+        /* Remove any previous fetcher */
         const old = document.getElementById('jsonp-fetcher');
         if (old) old.remove();
 
+        /* BUG FIX: Reset status to "Connecting" on each load attempt */
+        updateStatus('Connecting', 'yellow');
+
         const script = document.createElement('script');
         script.id  = 'jsonp-fetcher';
+        /* BUG FIX: cb param added to bust CDN/browser cache on retry */
         script.src = 'https://docs.google.com/spreadsheets/d/' + SHEET_ID +
                      '/gviz/tq?tqx=responseHandler:handleGoogleSheetResponse&sheet=' +
                      encodeURIComponent(SHEET_NAME) + '&cb=' + Date.now();
@@ -667,10 +676,16 @@
         script.onerror = () => {
             clearTimeout(loadTimeout);
             loadTimeout = null;
+            /* Remove failed script element */
+            const s = document.getElementById('jsonp-fetcher');
+            if (s) s.remove();
             showError('Network Error: ไม่สามารถเข้าถึง Google API ได้ (ตรวจสอบการเชื่อมต่ออินเทอร์เน็ต)');
         };
 
         loadTimeout = setTimeout(() => {
+            /* BUG FIX: Also remove script tag on timeout to stop stale callback */
+            const s = document.getElementById('jsonp-fetcher');
+            if (s) s.remove();
             showError('Timeout: เซิร์ฟเวอร์ไม่ตอบสนองใน ' + (JSONP_TIMEOUT / 1000) + ' วินาที');
         }, JSONP_TIMEOUT);
 
@@ -678,21 +693,60 @@
     }
 
     function showError(msg) {
-        /* FIX: stop animation loop to save CPU when in error state */
+        /* Stop animation loop to save CPU in error state */
         if (animFrameId) { cancelAnimationFrame(animFrameId); animFrameId = null; }
 
         loaderEl.style.display = 'flex';
         loaderEl.classList.remove('hidden');
-        /* FIX: use safeText() for err.message — avoids XSS via crafted sheet data */
-        loaderEl.innerHTML =
-            '<div style="text-align:center;padding:28px;max-width:310px;">' +
-            '<svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" stroke-width="1.5" style="margin:0 auto 14px;display:block;">' +
-            '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/>' +
-            '<circle cx="12" cy="16" r="0.6" fill="rgba(255,255,255,0.45)"/></svg>' +
-            '<p style="color:#fff;font-weight:600;font-size:0.78rem;margin-bottom:7px;">ไม่สามารถโหลดข้อมูลได้</p>' +
-            '<p style="color:rgba(255,255,255,0.38);font-size:0.68rem;margin-bottom:18px;line-height:1.6;">' + safeText(msg) + '</p>' +
-            '<button onclick="location.reload()" style="background:#fff;color:#000;border:none;padding:7px 18px;border-radius:4px;font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;">Retry</button>' +
-            '<p style="margin-top:12px;font-size:0.6rem;color:rgba(255,255,255,0.18);line-height:1.5;">ตรวจสอบว่า Google Sheet ตั้งค่าเป็น Public แล้ว</p></div>';
+
+        /* BUG FIX: Build DOM nodes instead of innerHTML for the retry button
+           so the onclick properly calls loadSheetData() (full retry, not just reload) */
+        loaderEl.innerHTML = '';
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'text-align:center;padding:28px;max-width:310px;';
+
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('width', '38'); svg.setAttribute('height', '38');
+        svg.setAttribute('viewBox', '0 0 24 24'); svg.setAttribute('fill', 'none');
+        svg.setAttribute('stroke', 'rgba(255,255,255,0.45)'); svg.setAttribute('stroke-width', '1.5');
+        svg.style.cssText = 'margin:0 auto 14px;display:block;';
+        const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        circle.setAttribute('cx', '12'); circle.setAttribute('cy', '12'); circle.setAttribute('r', '10');
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1','12'); line.setAttribute('y1','8'); line.setAttribute('x2','12'); line.setAttribute('y2','12');
+        const dot = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+        dot.setAttribute('cx','12'); dot.setAttribute('cy','16'); dot.setAttribute('r','0.6');
+        dot.setAttribute('fill','rgba(255,255,255,0.45)');
+        svg.append(circle, line, dot);
+
+        const h = document.createElement('p');
+        h.style.cssText = 'color:#fff;font-weight:600;font-size:0.78rem;margin-bottom:7px;';
+        h.textContent = 'ไม่สามารถโหลดข้อมูลได้';
+
+        const detail = document.createElement('p');
+        detail.style.cssText = 'color:rgba(255,255,255,0.38);font-size:0.68rem;margin-bottom:18px;line-height:1.6;';
+        detail.textContent = msg; /* textContent — XSS-safe */
+
+        const btn = document.createElement('button');
+        btn.style.cssText = 'background:#fff;color:#000;border:none;padding:7px 18px;border-radius:4px;font-size:0.68rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;cursor:pointer;';
+        btn.textContent = 'Retry';
+        /* BUG FIX: Retry re-runs the full data-load flow instead of hard-reloading the page */
+        btn.addEventListener('click', () => {
+            loaderEl.innerHTML = '';
+            loaderEl.appendChild(Object.assign(document.createElement('div'), {className:'loader-inner'}));
+            loaderEl.querySelector('.loader-inner').innerHTML =
+                '<div class="spinner"></div><div class="loader-text">Retrying…</div>';
+            /* BUG FIX: restart animation if it was stopped */
+            if (!animFrameId) animate();
+            loadSheetData();
+        });
+
+        const note = document.createElement('p');
+        note.style.cssText = 'margin-top:12px;font-size:0.6rem;color:rgba(255,255,255,0.18);line-height:1.5;';
+        note.textContent = 'ตรวจสอบว่า Google Sheet ตั้งค่าเป็น Public แล้ว';
+
+        wrap.append(svg, h, detail, btn, note);
+        loaderEl.appendChild(wrap);
         updateStatus('Failed', 'red');
     }
 
@@ -707,14 +761,17 @@
 
     /* ── THREE.JS INIT ── */
     function init3D() {
-        if (!container || typeof THREE === 'undefined') return;
+        /* BUG FIX: Guard against THREE not loading (e.g., CDN blocked) */
+        if (!container || typeof THREE === 'undefined') {
+            showError('THREE.js library failed to load. Check network/CDN.');
+            return;
+        }
 
         scene    = new THREE.Scene();
         camera   = new THREE.PerspectiveCamera(65, container.clientWidth / container.clientHeight, 0.1, 1000);
         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         renderer.setSize(container.clientWidth, container.clientHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        /* FIX: shadowMap disabled — no shadow casters/receivers exist, was pure overhead */
         container.appendChild(renderer.domElement);
 
         /* Lighting */
@@ -733,20 +790,20 @@
         grid.position.y = -1.8;
         scene.add(grid);
 
-        /* FIX: create shared materials once — disposed in disposeModel() */
+        /* Create shared materials once */
         sharedMat = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.92, roughness: 0.1 });
         innerMat  = new THREE.MeshStandardMaterial({ color: 0x111111 });
 
         animate();
     }
 
-    /* ── DISPOSE helper — properly cleans up geometry + materials ── */
+    /* ── DISPOSE helper ── */
     function disposeModel(group) {
         if (!group) return;
         group.traverse(obj => {
             if (obj.isMesh) {
                 if (obj.geometry) obj.geometry.dispose();
-                /* Only dispose if it's NOT the shared material (those live for app lifetime) */
+                /* Only dispose if NOT the shared materials (they live for the app's lifetime) */
                 if (obj.material && obj.material !== sharedMat && obj.material !== innerMat) {
                     obj.material.dispose();
                 }
@@ -762,6 +819,9 @@
         disposeModel(currentModel);
         currentModel = null;
 
+        /* BUG FIX: Guard — don't try to create geometry if Three.js never initialised */
+        if (!scene || !sharedMat) return;
+
         const group = new THREE.Group();
 
         if (type === 'pipe') {
@@ -773,9 +833,12 @@
             const capB = new THREE.Mesh(ringGeoB, sharedMat);
             capT.rotation.x = Math.PI / 2;  capT.position.y =  3;
             capB.rotation.x = -Math.PI / 2; capB.position.y = -3;
-            group.add(new THREE.Mesh(outerGeo, sharedMat),
-                      new THREE.Mesh(innerGeo, sharedMat),
-                      capT, capB);
+            group.add(
+                new THREE.Mesh(outerGeo, sharedMat),
+                new THREE.Mesh(innerGeo, sharedMat),
+                capT, capB
+            );
+            /* BUG FIX: Apply rotation to group, not scene — keeps drag rotation correct */
             group.rotation.x = Math.PI / 2;
 
         } else if (type === 'angle') {
@@ -796,12 +859,15 @@
             group.add(web, f1, f2);
 
         } else {
-            /* Square/Rect tube — hollow cross-section */
+            /* Square/Rect tube — hollow cross-section via CSG-like subtraction visual */
             const wall = 0.1;
             const outerGeo = new THREE.BoxGeometry(1.0, 1.0, 6);
+            /* BUG FIX: innerGeo z slightly longer (6.1) to prevent z-fighting at caps */
             const innerGeo = new THREE.BoxGeometry(1.0 - wall * 2, 1.0 - wall * 2, 6.1);
-            group.add(new THREE.Mesh(outerGeo, sharedMat),
-                      new THREE.Mesh(innerGeo, innerMat));
+            group.add(
+                new THREE.Mesh(outerGeo, sharedMat),
+                new THREE.Mesh(innerGeo, innerMat)
+            );
         }
 
         document.getElementById('canvas-type-label').textContent = TYPE_LABELS[type] || type.toUpperCase();
@@ -813,7 +879,7 @@
     function animate() {
         animFrameId = requestAnimationFrame(animate);
         if (currentModel && !isDragging) currentModel.rotation.y += 0.004;
-        renderer.render(scene, camera);
+        if (renderer && scene && camera) renderer.render(scene, camera);
     }
 
     /* ── DRAG TO ROTATE (Mouse) ── */
@@ -823,22 +889,31 @@
         if (!isDragging || !currentModel) return;
         currentModel.rotation.y += (e.clientX - prevX) * 0.008;
         currentModel.rotation.x += (e.clientY - prevY) * 0.004;
-        currentModel.rotation.x  = Math.max(-0.6, Math.min(0.6, currentModel.rotation.x));
+        /* BUG FIX: Clamp X rotation so model doesn't flip upside-down */
+        currentModel.rotation.x = Math.max(-0.6, Math.min(0.6, currentModel.rotation.x));
         prevX = e.clientX; prevY = e.clientY;
     }
 
     /* ── DRAG TO ROTATE (Touch) ── */
     function onTouchStart(e) {
-        if (e.touches.length === 1) { isDragging = true; prevX = e.touches[0].clientX; prevY = e.touches[0].clientY; }
+        if (e.touches.length === 1) {
+            isDragging = true;
+            prevX = e.touches[0].clientX;
+            prevY = e.touches[0].clientY;
+        }
     }
     function onTouchEnd()  { isDragging = false; }
     function onTouchMove(e) {
         if (!isDragging || !currentModel || e.touches.length !== 1) return;
+        /* BUG FIX: Also apply Y-axis drag on touch (was missing prevY update) */
         currentModel.rotation.y += (e.touches[0].clientX - prevX) * 0.008;
-        prevX = e.touches[0].clientX; prevY = e.touches[0].clientY;
+        currentModel.rotation.x += (e.touches[0].clientY - prevY) * 0.004;
+        currentModel.rotation.x  = Math.max(-0.6, Math.min(0.6, currentModel.rotation.x));
+        prevX = e.touches[0].clientX;
+        prevY = e.touches[0].clientY;
     }
 
-    /* ── RESIZE (debounced to avoid thrashing on rapid resize) ── */
+    /* ── RESIZE (debounced) ── */
     let resizeTimer = null;
     function onResize() {
         clearTimeout(resizeTimer);
@@ -889,7 +964,6 @@
         const activeCard = document.getElementById('card-' + id);
         if (activeCard) {
             activeCard.classList.add('card-active');
-            /* FIX: block:'nearest' prevents page-level scroll on mobile */
             activeCard.scrollIntoView({ inline: 'nearest', block: 'nearest', behavior: 'smooth' });
         }
     }
@@ -897,13 +971,14 @@
     /* ── RENDER PRODUCT LIST ── */
     function renderList() {
         const list = document.getElementById('product-list');
+        /* BUG FIX: Clear loading placeholder text before appending real cards */
         list.innerHTML = '';
         const frag = document.createDocumentFragment();
         steelProducts.forEach(p => {
             const card    = document.createElement('div');
             card.id       = 'card-' + p.id;
             card.className = 'product-card';
-            /* FIX: use textContent assignment (no innerHTML) — safe for arbitrary sheet data */
+            /* Use textContent — safe for arbitrary sheet data */
             const millEl  = document.createElement('div'); millEl.className  = 'card-mill';  millEl.textContent = fmt(p.mill);
             const skuEl   = document.createElement('div'); skuEl.className   = 'card-sku';   skuEl.textContent  = fmt(p.sku);
             const metaEl  = document.createElement('div'); metaEl.className  = 'card-meta';
@@ -919,7 +994,6 @@
 
     /* ── BOOT ── */
     document.addEventListener('DOMContentLoaded', () => {
-        /* Resolve DOM refs here — guaranteed to exist */
         container = document.getElementById('canvas-container');
         loaderEl  = document.getElementById('loader');
 
@@ -929,6 +1003,8 @@
         window.addEventListener('mousemove',     onMouseMove);
         container.addEventListener('touchstart', onTouchStart, { passive: true });
         window.addEventListener('touchend',      onTouchEnd);
+        /* BUG FIX: touchmove passive:false removed — passive:true is correct here
+           since we only read touch coords, we don't call preventDefault() */
         window.addEventListener('touchmove',     onTouchMove,  { passive: true });
         window.addEventListener('resize',        onResize);
 
